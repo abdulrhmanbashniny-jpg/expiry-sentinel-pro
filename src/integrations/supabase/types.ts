@@ -78,6 +78,7 @@ export type Database = {
           created_at: string
           created_by_user_id: string | null
           expiry_date: string
+          expiry_time: string | null
           id: string
           notes: string | null
           owner_department: string | null
@@ -93,6 +94,7 @@ export type Database = {
           created_at?: string
           created_by_user_id?: string | null
           expiry_date: string
+          expiry_time?: string | null
           id?: string
           notes?: string | null
           owner_department?: string | null
@@ -108,6 +110,7 @@ export type Database = {
           created_at?: string
           created_by_user_id?: string | null
           expiry_date?: string
+          expiry_time?: string | null
           id?: string
           notes?: string | null
           owner_department?: string | null

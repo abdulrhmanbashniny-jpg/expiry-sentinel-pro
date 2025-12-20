@@ -7,6 +7,7 @@ interface CreateItemData {
   title: string;
   category_id: string | null;
   expiry_date: string;
+  expiry_time?: string;
   owner_department?: string;
   responsible_person?: string;
   notes?: string;
@@ -46,6 +47,7 @@ export const useItems = () => {
           title: data.title,
           category_id: data.category_id,
           expiry_date: data.expiry_date,
+          expiry_time: data.expiry_time || '09:00',
           owner_department: data.owner_department || null,
           responsible_person: data.responsible_person || null,
           notes: data.notes || null,

@@ -46,6 +46,7 @@ export interface Item {
   title: string;
   category_id: string | null;
   expiry_date: string;
+  expiry_time: string | null;
   owner_department: string | null;
   responsible_person: string | null;
   notes: string | null;
