@@ -332,27 +332,47 @@ const Integration: React.FC = () => {
                 <Code className="h-5 w-5" />
                 n8n Workflow JSON
               </CardTitle>
-              <CardDescription>انسخ هذا الـ JSON واستورده في n8n</CardDescription>
+              <CardDescription>حمّل ملف الـ JSON واستورده في n8n</CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-4">
+              <div className="flex flex-col sm:flex-row gap-3">
+                <Button 
+                  className="flex-1"
+                  onClick={() => {
+                    const link = document.createElement('a');
+                    link.href = '/n8n-workflow.json';
+                    link.download = 'hr-reminder-n8n-workflow.json';
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    toast({ title: 'جاري تحميل الملف...' });
+                  }}
+                >
+                  <ExternalLink className="h-4 w-4 ml-2" />
+                  تحميل ملف Workflow JSON
+                </Button>
+                <Button 
+                  variant="outline"
+                  onClick={() => copyToClipboard(n8nWorkflow)}
+                >
+                  <Copy className="h-4 w-4 ml-2" />
+                  نسخ الكود
+                </Button>
+              </div>
+              
               <div className="relative">
                 <pre className="rounded bg-muted p-4 text-xs overflow-x-auto max-h-96" dir="ltr">
                   {n8nWorkflow}
                 </pre>
-                <Button 
-                  className="absolute top-2 left-2" 
-                  size="sm" 
-                  variant="secondary"
-                  onClick={() => copyToClipboard(n8nWorkflow)}
-                >
-                  <Copy className="h-4 w-4 ml-1" />
-                  نسخ
-                </Button>
               </div>
-              <div className="mt-4 rounded-lg border p-3 bg-primary/5">
+              
+              <div className="rounded-lg border p-3 bg-primary/5">
                 <p className="text-sm font-medium">ملاحظة مهمة</p>
                 <p className="text-sm text-muted-foreground">
-                  استبدل YOUR_WHATSAPP_API_URL برابط API الواتساب الخاص بك (مثل Twilio أو WhatsApp Business API)
+                  1. استبدل YOUR_WHATSAPP_API_URL برابط API الواتساب الخاص بك (Twilio أو WhatsApp Business API)
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  2. أضف متغير SUPABASE_URL في إعدادات n8n بالقيمة: <code className="bg-background px-1 rounded">{supabaseUrl}</code>
                 </p>
               </div>
             </CardContent>
