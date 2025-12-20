@@ -1,45 +1,234 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Code, Copy, ExternalLink } from 'lucide-react';
+import { Code, Copy, ExternalLink, Play, CheckCircle2, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 const Integration: React.FC = () => {
   const { toast } = useToast();
-  const baseUrl = `${window.location.origin}`;
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+  const [testResults, setTestResults] = useState<Record<string, { status: 'idle' | 'loading' | 'success' | 'error', message?: string }>>({});
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
     toast({ title: 'تم النسخ!' });
   };
 
+  const testEndpoint = async (name: string, url: string, method: string = 'GET', body?: object) => {
+    setTestResults(prev => ({ ...prev, [name]: { status: 'loading' } }));
+    try {
+      const response = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        ...(body ? { body: JSON.stringify(body) } : {}),
+      });
+      const data = await response.json();
+      if (data.success) {
+        setTestResults(prev => ({ ...prev, [name]: { status: 'success', message: JSON.stringify(data, null, 2) } }));
+      } else {
+        setTestResults(prev => ({ ...prev, [name]: { status: 'error', message: data.error || 'فشل الاختبار' } }));
+      }
+    } catch (error) {
+      setTestResults(prev => ({ ...prev, [name]: { status: 'error', message: error instanceof Error ? error.message : 'خطأ في الاتصال' } }));
+    }
+  };
+
   const endpoints = [
     {
-      name: 'جلب العناصر القادمة على الانتهاء',
+      name: 'get-due-items',
+      title: 'جلب العناصر المستحقة',
       method: 'GET',
-      path: '/rest/v1/items?status=eq.active&select=*,category:categories(*),reminder_rule:reminder_rules(*)',
-      description: 'يجلب جميع العناصر النشطة مع الفئات وقواعد التذكير',
+      path: `${supabaseUrl}/functions/v1/get-due-items`,
+      description: 'يجلب جميع العناصر التي تحتاج إرسال تنبيهات اليوم مع المستلمين',
+      params: '?date=YYYY-MM-DD (اختياري)',
+      response: `{
+  "success": true,
+  "check_date": "2024-01-15",
+  "total_due": 2,
+  "items": [
+    {
+      "item": {
+        "id": "uuid",
+        "title": "عقد موظف",
+        "expiry_date": "2024-01-20",
+        "expiry_time": "09:00",
+        "days_left": 5,
+        "category": "عقود",
+        "responsible_person": "أحمد",
+        "notes": "ملاحظة"
+      },
+      "reminder_rule": {
+        "id": "uuid",
+        "name": "قاعدة افتراضية",
+        "trigger_day": 5
+      },
+      "recipients": [
+        {
+          "id": "uuid",
+          "name": "محمد",
+          "whatsapp_number": "+966500000000"
+        }
+      ]
+    }
+  ]
+}`,
     },
     {
-      name: 'جلب مستلمي عنصر معين',
-      method: 'GET',
-      path: '/rest/v1/item_recipients?item_id=eq.{ITEM_ID}&select=*,recipient:recipients(*)',
-      description: 'يجلب المستلمين المرتبطين بعنصر معين',
-    },
-    {
-      name: 'إضافة سجل إشعار',
+      name: 'prepare-message',
+      title: 'تحضير رسالة',
       method: 'POST',
-      path: '/rest/v1/notification_log',
-      description: 'يضيف سجل إشعار جديد عند الإرسال أو الفشل',
+      path: `${supabaseUrl}/functions/v1/prepare-message`,
+      description: 'يحضر رسالة واتساب جاهزة للإرسال لعنصر ومستلم محدد',
+      body: `{
+  "item_id": "uuid",
+  "recipient_id": "uuid"
+}`,
+      response: `{
+  "success": true,
+  "data": {
+    "phone": "+966500000000",
+    "recipient_name": "محمد",
+    "message": "🔔 تنبيه: عقد موظف...",
+    "item_id": "uuid",
+    "recipient_id": "uuid",
+    "days_left": 5
+  }
+}`,
+    },
+    {
+      name: 'send-notification',
+      title: 'تسجيل إشعار',
+      method: 'POST',
+      path: `${supabaseUrl}/functions/v1/send-notification`,
+      description: 'يسجل الإشعار في قاعدة البيانات بعد الإرسال (أو الفشل)',
+      body: `{
+  "item_id": "uuid",
+  "recipient_id": "uuid",
+  "days_left": 5,
+  "status": "sent",
+  "provider_message_id": "whatsapp_msg_123",
+  "error_message": null
+}`,
+      response: `{
+  "success": true,
+  "log_id": "uuid",
+  "status": "sent"
+}`,
+    },
+    {
+      name: 'get-message-template',
+      title: 'قالب الرسالة',
+      method: 'GET',
+      path: `${supabaseUrl}/functions/v1/get-message-template`,
+      description: 'يجلب أو يحدث قالب رسالة الواتساب',
+      response: `{
+  "success": true,
+  "template": "🔔 تنبيه: {{title}}...",
+  "variables": [
+    "{{title}}",
+    "{{expiry_date}}",
+    "{{expiry_time}}",
+    "{{days_left}}",
+    "{{category}}",
+    "{{responsible_person}}",
+    "{{notes}}"
+  ]
+}`,
+    },
+    {
+      name: 'test-whatsapp',
+      title: 'اختبار واتساب',
+      method: 'POST',
+      path: `${supabaseUrl}/functions/v1/test-whatsapp`,
+      description: 'يختبر إرسال رسالة واتساب لعنصر ومستلم محدد',
+      body: `{
+  "item_id": "uuid",
+  "recipient_id": "uuid"
+}`,
+      response: `{
+  "success": true,
+  "data": {
+    "recipient": { "name": "محمد", "whatsapp_number": "+966500000000" },
+    "item": { "id": "uuid", "title": "عقد موظف", ... },
+    "message": "رسالة التنبيه...",
+    "webhook_payload": { "phone": "...", "message": "..." }
+  }
+}`,
     },
   ];
+
+  const n8nWorkflow = `{
+  "name": "HR Reminder Daily Check",
+  "nodes": [
+    {
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "parameters": {
+        "rule": { "interval": [{ "field": "hours", "hoursInterval": 24 }] }
+      },
+      "position": [250, 300]
+    },
+    {
+      "name": "Get Due Items",
+      "type": "n8n-nodes-base.httpRequest",
+      "parameters": {
+        "method": "GET",
+        "url": "${supabaseUrl}/functions/v1/get-due-items"
+      },
+      "position": [450, 300]
+    },
+    {
+      "name": "Loop Items",
+      "type": "n8n-nodes-base.splitInBatches",
+      "parameters": { "batchSize": 1 },
+      "position": [650, 300]
+    },
+    {
+      "name": "Loop Recipients",
+      "type": "n8n-nodes-base.splitInBatches",
+      "parameters": { "batchSize": 1, "options": {} },
+      "position": [850, 300]
+    },
+    {
+      "name": "Prepare Message",
+      "type": "n8n-nodes-base.httpRequest",
+      "parameters": {
+        "method": "POST",
+        "url": "${supabaseUrl}/functions/v1/prepare-message",
+        "body": "={{ JSON.stringify({ item_id: $json.item.id, recipient_id: $json.recipients[0].id }) }}"
+      },
+      "position": [1050, 300]
+    },
+    {
+      "name": "Send WhatsApp",
+      "type": "n8n-nodes-base.httpRequest",
+      "parameters": {
+        "method": "POST",
+        "url": "YOUR_WHATSAPP_API_URL",
+        "body": "={{ JSON.stringify({ phone: $json.data.phone, message: $json.data.message }) }}"
+      },
+      "position": [1250, 300]
+    },
+    {
+      "name": "Log Notification",
+      "type": "n8n-nodes-base.httpRequest",
+      "parameters": {
+        "method": "POST",
+        "url": "${supabaseUrl}/functions/v1/send-notification",
+        "body": "={{ JSON.stringify({ item_id: $json.data.item_id, recipient_id: $json.data.recipient_id, days_left: $json.data.days_left, status: 'sent' }) }}"
+      },
+      "position": [1450, 300]
+    }
+  ]
+}`;
 
   return (
     <div className="animate-fade-in space-y-6">
       <div>
         <h1 className="text-2xl font-bold">التكامل مع n8n</h1>
-        <p className="text-muted-foreground">إعداد الأتمتة للتنبيهات التلقائية</p>
+        <p className="text-muted-foreground">إعداد الأتمتة للتنبيهات التلقائية عبر واتساب</p>
       </div>
 
       <Card>
@@ -58,54 +247,187 @@ const Integration: React.FC = () => {
             </Button>
           </div>
           <div className="rounded-lg border p-3 bg-warning/10">
-            <p className="text-sm font-medium text-warning">ملاحظة أمنية</p>
-            <p className="text-sm text-muted-foreground">استخدم Service Role Key في n8n للوصول الكامل للبيانات. لا تشارك هذا المفتاح علنياً.</p>
+            <p className="text-sm font-medium text-warning">ملاحظة</p>
+            <p className="text-sm text-muted-foreground">الـ APIs متاحة بدون مصادقة للاستخدام مع n8n. تأكد من حماية webhook URL.</p>
           </div>
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2"><Code className="h-5 w-5" /> نقاط النهاية (Endpoints)</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {endpoints.map((ep, i) => (
-            <div key={i} className="rounded-lg border p-4">
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="font-medium">{ep.name}</p>
-                  <p className="text-sm text-muted-foreground">{ep.description}</p>
+      <Tabs defaultValue="endpoints" className="w-full">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="endpoints">نقاط النهاية</TabsTrigger>
+          <TabsTrigger value="workflow">Workflow جاهز</TabsTrigger>
+          <TabsTrigger value="steps">خطوات الإعداد</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="endpoints" className="space-y-4 mt-4">
+          {endpoints.map((ep) => (
+            <Card key={ep.name}>
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <CardTitle className="text-lg">{ep.title}</CardTitle>
+                    <Badge variant={ep.method === 'GET' ? 'default' : 'secondary'}>
+                      {ep.method}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {testResults[ep.name]?.status === 'success' && (
+                      <CheckCircle2 className="h-5 w-5 text-success" />
+                    )}
+                    {testResults[ep.name]?.status === 'error' && (
+                      <AlertCircle className="h-5 w-5 text-destructive" />
+                    )}
+                    {ep.method === 'GET' && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => testEndpoint(ep.name, ep.path)}
+                        disabled={testResults[ep.name]?.status === 'loading'}
+                      >
+                        <Play className="h-4 w-4 ml-1" />
+                        اختبار
+                      </Button>
+                    )}
+                  </div>
                 </div>
-                <span className={`rounded px-2 py-1 text-xs font-mono ${ep.method === 'GET' ? 'bg-success/20 text-success' : 'bg-primary/20 text-primary'}`}>
-                  {ep.method}
-                </span>
-              </div>
-              <div className="mt-2 flex items-center gap-2">
-                <code className="flex-1 rounded bg-muted p-2 text-xs overflow-x-auto" dir="ltr">{ep.path}</code>
-                <Button variant="ghost" size="icon" onClick={() => copyToClipboard(ep.path)}>
-                  <Copy className="h-4 w-4" />
+                <CardDescription>{ep.description}</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <code className="flex-1 rounded bg-muted p-2 text-xs overflow-x-auto" dir="ltr">
+                    {ep.path}{ep.params || ''}
+                  </code>
+                  <Button variant="ghost" size="icon" onClick={() => copyToClipboard(ep.path)}>
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                </div>
+                
+                {ep.body && (
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Body:</p>
+                    <pre className="rounded bg-muted p-2 text-xs overflow-x-auto" dir="ltr">{ep.body}</pre>
+                  </div>
+                )}
+                
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Response:</p>
+                  <pre className="rounded bg-muted p-2 text-xs overflow-x-auto max-h-40" dir="ltr">{ep.response}</pre>
+                </div>
+
+                {testResults[ep.name]?.message && (
+                  <div className={`rounded p-2 text-xs ${testResults[ep.name]?.status === 'success' ? 'bg-success/10' : 'bg-destructive/10'}`}>
+                    <pre className="overflow-x-auto" dir="ltr">{testResults[ep.name]?.message}</pre>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          ))}
+        </TabsContent>
+
+        <TabsContent value="workflow" className="mt-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Code className="h-5 w-5" />
+                n8n Workflow JSON
+              </CardTitle>
+              <CardDescription>انسخ هذا الـ JSON واستورده في n8n</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="relative">
+                <pre className="rounded bg-muted p-4 text-xs overflow-x-auto max-h-96" dir="ltr">
+                  {n8nWorkflow}
+                </pre>
+                <Button 
+                  className="absolute top-2 left-2" 
+                  size="sm" 
+                  variant="secondary"
+                  onClick={() => copyToClipboard(n8nWorkflow)}
+                >
+                  <Copy className="h-4 w-4 ml-1" />
+                  نسخ
                 </Button>
               </div>
-            </div>
-          ))}
-        </CardContent>
-      </Card>
+              <div className="mt-4 rounded-lg border p-3 bg-primary/5">
+                <p className="text-sm font-medium">ملاحظة مهمة</p>
+                <p className="text-sm text-muted-foreground">
+                  استبدل YOUR_WHATSAPP_API_URL برابط API الواتساب الخاص بك (مثل Twilio أو WhatsApp Business API)
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>منطق الفحص اليومي</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ol className="list-decimal list-inside space-y-2 text-sm text-muted-foreground">
-            <li>جلب العناصر النشطة التي لم تنته بعد</li>
-            <li>لكل عنصر، حساب الأيام المتبقية حتى تاريخ الانتهاء</li>
-            <li>مقارنة الأيام المتبقية مع قيم days_before في قاعدة التذكير</li>
-            <li>إذا تطابقت، جلب المستلمين المرتبطين</li>
-            <li>التحقق من notification_log لمنع التكرار</li>
-            <li>إرسال رسالة واتساب وتسجيل النتيجة</li>
-          </ol>
-        </CardContent>
-      </Card>
+        <TabsContent value="steps" className="mt-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>خطوات إعداد n8n</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ol className="list-decimal list-inside space-y-4 text-sm">
+                <li className="p-3 rounded-lg bg-muted/50">
+                  <span className="font-medium">إنشاء Workflow جديد</span>
+                  <p className="text-muted-foreground mt-1 mr-5">افتح n8n وأنشئ workflow جديد أو استورد الـ JSON أعلاه</p>
+                </li>
+                <li className="p-3 rounded-lg bg-muted/50">
+                  <span className="font-medium">إضافة Schedule Trigger</span>
+                  <p className="text-muted-foreground mt-1 mr-5">اضبط التشغيل اليومي في الوقت المناسب (مثلاً 8:00 صباحاً)</p>
+                </li>
+                <li className="p-3 rounded-lg bg-muted/50">
+                  <span className="font-medium">استدعاء Get Due Items</span>
+                  <p className="text-muted-foreground mt-1 mr-5">
+                    <code className="bg-background px-1 rounded" dir="ltr">GET {supabaseUrl}/functions/v1/get-due-items</code>
+                  </p>
+                </li>
+                <li className="p-3 rounded-lg bg-muted/50">
+                  <span className="font-medium">Loop على العناصر والمستلمين</span>
+                  <p className="text-muted-foreground mt-1 mr-5">استخدم SplitInBatches للمرور على كل عنصر ومستلميه</p>
+                </li>
+                <li className="p-3 rounded-lg bg-muted/50">
+                  <span className="font-medium">تحضير الرسالة</span>
+                  <p className="text-muted-foreground mt-1 mr-5">
+                    <code className="bg-background px-1 rounded" dir="ltr">POST /prepare-message</code> مع item_id و recipient_id
+                  </p>
+                </li>
+                <li className="p-3 rounded-lg bg-muted/50">
+                  <span className="font-medium">إرسال WhatsApp</span>
+                  <p className="text-muted-foreground mt-1 mr-5">استخدم Twilio أو WhatsApp Business API لإرسال الرسالة</p>
+                </li>
+                <li className="p-3 rounded-lg bg-muted/50">
+                  <span className="font-medium">تسجيل الإشعار</span>
+                  <p className="text-muted-foreground mt-1 mr-5">
+                    <code className="bg-background px-1 rounded" dir="ltr">POST /send-notification</code> لتسجيل النتيجة
+                  </p>
+                </li>
+              </ol>
+            </CardContent>
+          </Card>
+
+          <Card className="mt-4">
+            <CardHeader>
+              <CardTitle>مخطط العمل</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center justify-center gap-2 flex-wrap p-4 bg-muted/30 rounded-lg" dir="ltr">
+                <Badge variant="outline" className="py-2">Schedule</Badge>
+                <span>→</span>
+                <Badge variant="outline" className="py-2">Get Due Items</Badge>
+                <span>→</span>
+                <Badge variant="outline" className="py-2">Loop Items</Badge>
+                <span>→</span>
+                <Badge variant="outline" className="py-2">Loop Recipients</Badge>
+                <span>→</span>
+                <Badge variant="outline" className="py-2">Prepare Message</Badge>
+                <span>→</span>
+                <Badge variant="outline" className="py-2">Send WhatsApp</Badge>
+                <span>→</span>
+                <Badge variant="outline" className="py-2">Log Notification</Badge>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };
