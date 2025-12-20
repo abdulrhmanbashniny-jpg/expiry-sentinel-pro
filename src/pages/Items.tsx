@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Search, Filter, FileText, Trash2, Edit, Archive } from 'lucide-react';
+import { Plus, Search, Filter, FileText, Trash2, Edit, Archive, MessageSquare } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,6 +10,7 @@ import { useItems } from '@/hooks/useItems';
 import { useCategories } from '@/hooks/useCategories';
 import { format } from 'date-fns';
 import { ItemStatus } from '@/types/database';
+import TestWhatsAppDialog from '@/components/TestWhatsAppDialog';
 
 const Items: React.FC = () => {
   const navigate = useNavigate();
@@ -126,6 +127,10 @@ const Items: React.FC = () => {
                       <td>{getStatusBadge(item.status, item.expiry_date)}</td>
                       <td onClick={(e) => e.stopPropagation()}>
                         <div className="flex gap-1">
+                          <TestWhatsAppDialog 
+                            itemId={item.id} 
+                            itemTitle={item.title}
+                          />
                           <Button size="icon" variant="ghost" onClick={() => navigate(`/items/${item.id}/edit`)}>
                             <Edit className="h-4 w-4" />
                           </Button>

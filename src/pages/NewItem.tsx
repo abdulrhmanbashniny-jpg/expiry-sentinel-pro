@@ -13,7 +13,7 @@ import { useItems } from '@/hooks/useItems';
 import { useCategories } from '@/hooks/useCategories';
 import { useRecipients } from '@/hooks/useRecipients';
 import { useReminderRules } from '@/hooks/useReminderRules';
-import { CalendarIcon, ArrowRight, Loader2 } from 'lucide-react';
+import { CalendarIcon, ArrowRight, Loader2, Clock } from 'lucide-react';
 import { format } from 'date-fns';
 import { ar } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -29,6 +29,7 @@ const NewItem: React.FC = () => {
     title: '',
     category_id: '',
     expiry_date: undefined as Date | undefined,
+    expiry_time: '09:00',
     owner_department: '',
     responsible_person: '',
     notes: '',
@@ -44,6 +45,7 @@ const NewItem: React.FC = () => {
       title: formData.title,
       category_id: formData.category_id || null,
       expiry_date: format(formData.expiry_date, 'yyyy-MM-dd'),
+      expiry_time: formData.expiry_time,
       owner_department: formData.owner_department,
       responsible_person: formData.responsible_person,
       notes: formData.notes,
@@ -95,19 +97,33 @@ const NewItem: React.FC = () => {
                 </Select>
               </div>
 
-              <div className="space-y-2">
-                <Label>تاريخ الانتهاء *</Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button variant="outline" className={cn("w-full justify-start text-right", !formData.expiry_date && "text-muted-foreground")}>
-                      <CalendarIcon className="ml-2 h-4 w-4" />
-                      {formData.expiry_date ? format(formData.expiry_date, 'PPP', { locale: ar }) : 'اختر التاريخ'}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar mode="single" selected={formData.expiry_date} onSelect={(d) => setFormData({ ...formData, expiry_date: d })} className="pointer-events-auto" />
-                  </PopoverContent>
-                </Popover>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>تاريخ الانتهاء *</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" className={cn("w-full justify-start text-right", !formData.expiry_date && "text-muted-foreground")}>
+                        <CalendarIcon className="ml-2 h-4 w-4" />
+                        {formData.expiry_date ? format(formData.expiry_date, 'PPP', { locale: ar }) : 'اختر التاريخ'}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar mode="single" selected={formData.expiry_date} onSelect={(d) => setFormData({ ...formData, expiry_date: d })} className="pointer-events-auto" />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+                <div className="space-y-2">
+                  <Label>وقت التنبيه</Label>
+                  <div className="relative">
+                    <Clock className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      type="time"
+                      value={formData.expiry_time}
+                      onChange={(e) => setFormData({ ...formData, expiry_time: e.target.value })}
+                      className="pr-10"
+                    />
+                  </div>
+                </div>
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2">
