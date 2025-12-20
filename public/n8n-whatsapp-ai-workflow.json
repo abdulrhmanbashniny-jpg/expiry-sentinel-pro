@@ -24,7 +24,7 @@
       "id": "webhook-response",
       "name": "Webhook Response",
       "type": "n8n-nodes-base.respondToWebhook",
-      "typeVersion": 1,
+      "typeVersion": 1.1,
       "position": [450, 300]
     },
     {
@@ -39,50 +39,19 @@
     },
     {
       "parameters": {
-        "method": "GET",
-        "url": "={{ $env.SUPABASE_URL }}/functions/v1/get-due-items",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
-        "sendQuery": true,
-        "queryParameters": {
-          "parameters": [
-            {
-              "name": "days_ahead",
-              "value": "30"
-            }
-          ]
-        },
-        "options": {}
-      },
-      "id": "get-items-tool",
-      "name": "Get Due Items Tool",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [850, 150],
-      "credentials": {
-        "httpHeaderAuth": {
-          "id": "supabase-auth",
-          "name": "Supabase Auth"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "agent": "openAiFunctionsAgent",
         "promptType": "define",
         "text": "=أنت مساعد إداري ذكي لنظام تنبيهات انتهاء الصلاحية.\n\nرقم المعاملة الحالي: {{ $('Parse WhatsApp Message').item.json.refNumber }}\nرقم الهاتف: {{ $('Parse WhatsApp Message').item.json.phone }}\n\nرسالة المستخدم:\n{{ $('Parse WhatsApp Message').item.json.message }}\n\n---\n\nمهامك:\n1. الرد على استفسارات المستخدمين حول المعاملات والتنبيهات\n2. البحث عن معاملات باستخدام الرقم التسلسلي أو اسم المعاملة\n3. عرض المعاملات القريبة من الانتهاء\n4. تقديم معلومات مفيدة عن حالة التنبيهات\n\nقواعد الرد:\n- استخدم اللغة العربية دائماً\n- كن مختصراً ومفيداً\n- اذكر رقم المعاملة في كل رد\n- إذا لم تجد معلومات، اعتذر بلطف واقترح بدائل",
-        "options": {
-          "systemMessage": "أنت مساعد إداري متخصص في نظام تنبيهات انتهاء الصلاحية. تساعد المستخدمين في:\n- الاستعلام عن المعاملات والوثائق\n- معرفة تواريخ الانتهاء القادمة\n- البحث عن معاملات محددة\n- تقديم تقارير موجزة\n\nاستخدم الأدوات المتاحة للحصول على البيانات الحقيقية من النظام."
-        }
+        "hasOutputParser": false
       },
       "id": "ai-agent",
       "name": "AI Assistant",
       "type": "@n8n/n8n-nodes-langchain.agent",
-      "typeVersion": 1.6,
+      "typeVersion": 1.7,
       "position": [1050, 300]
     },
     {
       "parameters": {
+        "model": "gpt-4o-mini",
         "options": {
           "temperature": 0.7
         }
@@ -90,7 +59,7 @@
       "id": "openai-model",
       "name": "OpenAI Chat Model",
       "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
-      "typeVersion": 1,
+      "typeVersion": 1.2,
       "position": [1050, 500],
       "credentials": {
         "openAiApi": {
@@ -101,105 +70,95 @@
     },
     {
       "parameters": {
-        "name": "get_due_items",
-        "description": "جلب المعاملات القريبة من الانتهاء. يمكن تحديد عدد الأيام للبحث.",
+        "toolDescription": "جلب المعاملات القريبة من الانتهاء. استخدم هذه الأداة للحصول على قائمة المعاملات التي ستنتهي قريباً.",
         "method": "GET",
         "url": "={{ $env.SUPABASE_URL }}/functions/v1/get-due-items",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
         "sendQuery": true,
-        "parametersQuery": {
+        "specifyQuery": "keypair",
+        "queryParameters": {
           "parameters": [
             {
               "name": "days_ahead",
-              "valueProvider": "modelOptional",
-              "description": "عدد الأيام للبحث (افتراضي: 30)"
+              "value": "30"
             }
           ]
         },
-        "placeholderDefinitions": {
-          "parameters": []
+        "sendHeaders": true,
+        "specifyHeaders": "keypair",
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $env.SUPABASE_ANON_KEY }}"
+            }
+          ]
         }
       },
       "id": "tool-get-due-items",
-      "name": "Tool: Get Due Items",
+      "name": "Get Due Items",
       "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
       "typeVersion": 1.1,
-      "position": [1250, 500],
-      "credentials": {
-        "httpHeaderAuth": {
-          "id": "supabase-auth",
-          "name": "Supabase Auth"
-        }
-      }
+      "position": [1250, 500]
     },
     {
       "parameters": {
-        "name": "search_items",
-        "description": "البحث عن معاملة بالاسم أو الوصف",
+        "toolDescription": "البحث عن معاملة بالاسم أو الوصف. استخدم هذه الأداة عندما يسأل المستخدم عن معاملة معينة.",
         "method": "GET",
-        "url": "={{ $env.SUPABASE_URL }}/functions/v1/search-items",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
-        "sendQuery": true,
-        "parametersQuery": {
+        "url": "={{ $env.SUPABASE_URL }}/functions/v1/search-items?query={query}",
+        "sendHeaders": true,
+        "specifyHeaders": "keypair",
+        "headerParameters": {
           "parameters": [
             {
-              "name": "query",
-              "valueProvider": "modelRequired",
-              "description": "نص البحث (اسم المعاملة أو جزء منه)"
+              "name": "apikey",
+              "value": "={{ $env.SUPABASE_ANON_KEY }}"
             }
           ]
         },
         "placeholderDefinitions": {
-          "parameters": []
+          "values": [
+            {
+              "name": "query",
+              "description": "نص البحث - اسم المعاملة أو جزء منه"
+            }
+          ]
         }
       },
       "id": "tool-search-items",
-      "name": "Tool: Search Items",
+      "name": "Search Items",
       "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
       "typeVersion": 1.1,
-      "position": [1400, 500],
-      "credentials": {
-        "httpHeaderAuth": {
-          "id": "supabase-auth",
-          "name": "Supabase Auth"
-        }
-      }
+      "position": [1400, 500]
     },
     {
       "parameters": {
-        "name": "get_item_details",
-        "description": "جلب تفاصيل معاملة محددة بالرقم التسلسلي",
+        "toolDescription": "جلب تفاصيل معاملة محددة بالرقم التسلسلي (ID). استخدم هذه الأداة عندما تحتاج معلومات تفصيلية عن معاملة معينة.",
         "method": "GET",
-        "url": "={{ $env.SUPABASE_URL }}/functions/v1/get-item-details",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
-        "sendQuery": true,
-        "parametersQuery": {
+        "url": "={{ $env.SUPABASE_URL }}/functions/v1/get-item-details?item_id={item_id}",
+        "sendHeaders": true,
+        "specifyHeaders": "keypair",
+        "headerParameters": {
           "parameters": [
             {
-              "name": "item_id",
-              "valueProvider": "modelRequired",
-              "description": "رقم المعاملة (UUID)"
+              "name": "apikey",
+              "value": "={{ $env.SUPABASE_ANON_KEY }}"
             }
           ]
         },
         "placeholderDefinitions": {
-          "parameters": []
+          "values": [
+            {
+              "name": "item_id",
+              "description": "رقم المعاملة (UUID)"
+            }
+          ]
         }
       },
       "id": "tool-get-item-details",
-      "name": "Tool: Get Item Details",
+      "name": "Get Item Details",
       "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
       "typeVersion": 1.1,
-      "position": [1550, 500],
-      "credentials": {
-        "httpHeaderAuth": {
-          "id": "supabase-auth",
-          "name": "Supabase Auth"
-        }
-      }
+      "position": [1550, 500]
     },
     {
       "parameters": {
@@ -215,47 +174,59 @@
       "parameters": {
         "method": "POST",
         "url": "https://app.appslink.io/api/v1/send-message",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "specifyHeaders": "keypair",
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer YOUR_APPSLINK_API_KEY"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"phone\": \"{{ $json.phone }}\",\n  \"message\": \"{{ $json.message }}\",\n  \"refNumber\": \"{{ $json.refNumber }}\"\n}",
+        "jsonBody": "={\n  \"phone\": \"{{ $json.phone }}\",\n  \"message\": \"{{ $json.message }}\"\n}",
         "options": {}
       },
       "id": "send-whatsapp",
       "name": "Send WhatsApp via AppsLink",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1500, 300],
-      "credentials": {
-        "httpHeaderAuth": {
-          "id": "appslink-auth",
-          "name": "AppsLink API Key"
-        }
-      }
+      "position": [1500, 300]
     },
     {
       "parameters": {
         "method": "POST",
         "url": "={{ $env.SUPABASE_URL }}/functions/v1/log-conversation",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "specifyHeaders": "keypair",
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $env.SUPABASE_ANON_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"phone\": \"{{ $('Parse WhatsApp Message').item.json.phone }}\",\n  \"ref_number\": \"{{ $('Parse WhatsApp Message').item.json.refNumber }}\",\n  \"user_message\": \"{{ $('Parse WhatsApp Message').item.json.message }}\",\n  \"ai_response\": \"{{ $('Prepare WhatsApp Response').item.json.message }}\",\n  \"timestamp\": \"{{ $('Prepare WhatsApp Response').item.json.timestamp }}\"\n}",
+        "jsonBody": "={\n  \"phone\": \"{{ $('Parse WhatsApp Message').item.json.phone }}\",\n  \"ref_number\": \"{{ $('Parse WhatsApp Message').item.json.refNumber }}\",\n  \"user_message\": \"{{ $('Parse WhatsApp Message').item.json.message }}\",\n  \"ai_response\": \"{{ $('Prepare WhatsApp Response').item.json.message }}\"\n}",
         "options": {}
       },
       "id": "log-conversation",
       "name": "Log Conversation",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1700, 300],
-      "credentials": {
-        "httpHeaderAuth": {
-          "id": "supabase-auth",
-          "name": "Supabase Auth"
-        }
-      }
+      "position": [1700, 300]
     }
   ],
   "connections": {
@@ -308,7 +279,7 @@
         ]
       ]
     },
-    "Tool: Get Due Items": {
+    "Get Due Items": {
       "ai_tool": [
         [
           {
@@ -319,7 +290,7 @@
         ]
       ]
     },
-    "Tool: Search Items": {
+    "Search Items": {
       "ai_tool": [
         [
           {
@@ -330,7 +301,7 @@
         ]
       ]
     },
-    "Tool: Get Item Details": {
+    "Get Item Details": {
       "ai_tool": [
         [
           {
@@ -369,10 +340,9 @@
   },
   "staticData": null,
   "meta": {
-    "templateId": "whatsapp-ai-assistant",
-    "instanceId": "custom"
+    "templateCreatedBy": "Lovable",
+    "instanceId": ""
   },
   "pinData": {},
-  "versionId": "1.0.0",
-  "triggerCount": 0
+  "tags": []
 }
