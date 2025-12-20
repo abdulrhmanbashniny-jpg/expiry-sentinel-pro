@@ -254,9 +254,10 @@ const Integration: React.FC = () => {
       </Card>
 
       <Tabs defaultValue="endpoints" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="endpoints">نقاط النهاية</TabsTrigger>
           <TabsTrigger value="workflow">Workflow جاهز</TabsTrigger>
+          <TabsTrigger value="ai-workflow">AI WhatsApp Bot</TabsTrigger>
           <TabsTrigger value="steps">خطوات الإعداد</TabsTrigger>
         </TabsList>
 
@@ -374,6 +375,97 @@ const Integration: React.FC = () => {
                 <p className="text-sm text-muted-foreground">
                   2. أضف متغير SUPABASE_URL في إعدادات n8n بالقيمة: <code className="bg-background px-1 rounded">{supabaseUrl}</code>
                 </p>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="ai-workflow" className="mt-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Code className="h-5 w-5" />
+                🤖 WhatsApp AI Assistant Workflow
+              </CardTitle>
+              <CardDescription>
+                Bot ذكي يستقبل رسائل WhatsApp ويرد عليها بذكاء اصطناعي مع إمكانية الاستعلام عن المعاملات
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="rounded-lg border p-4 bg-primary/5">
+                <h4 className="font-semibold mb-2">📋 مميزات هذا الـ Workflow:</h4>
+                <ul className="text-sm space-y-1 text-muted-foreground">
+                  <li>• يستقبل رسائل WhatsApp عبر Webhook من منصة appslink.io</li>
+                  <li>• يعالج الرسالة بالذكاء الاصطناعي (OpenAI)</li>
+                  <li>• لديه أدوات للبحث واستعلام المعاملات</li>
+                  <li>• كل معاملة لها رقم تسلسلي مرجعي</li>
+                  <li>• يرد على المستخدم عبر WhatsApp</li>
+                  <li>• يسجل جميع المحادثات للمراجعة</li>
+                </ul>
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-3">
+                <Button 
+                  className="flex-1"
+                  onClick={() => {
+                    const link = document.createElement('a');
+                    link.href = '/n8n-whatsapp-ai-workflow.json';
+                    link.download = 'whatsapp-ai-assistant-workflow.json';
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    toast({ title: 'جاري تحميل ملف AI Workflow...' });
+                  }}
+                >
+                  <ExternalLink className="h-4 w-4 ml-2" />
+                  تحميل AI Workflow JSON
+                </Button>
+              </div>
+
+              <div className="rounded-lg border p-4 bg-warning/10">
+                <h4 className="font-semibold text-warning mb-2">⚙️ إعداد مطلوب في n8n:</h4>
+                <ol className="text-sm space-y-2 text-muted-foreground list-decimal list-inside">
+                  <li>أضف <code className="bg-background px-1 rounded">OpenAI API Credentials</code> في n8n</li>
+                  <li>أضف <code className="bg-background px-1 rounded">Supabase Auth</code> (Header: apikey = SUPABASE_ANON_KEY)</li>
+                  <li>أضف <code className="bg-background px-1 rounded">AppsLink API Key</code> للواتساب</li>
+                  <li>أضف متغير بيئة <code className="bg-background px-1 rounded">SUPABASE_URL = {supabaseUrl}</code></li>
+                  <li>عدّل رابط API الإرسال حسب توثيق appslink.io</li>
+                </ol>
+              </div>
+
+              <div className="rounded-lg border p-4">
+                <h4 className="font-semibold mb-2">🔗 نقاط النهاية الإضافية للـ AI:</h4>
+                <div className="space-y-2 text-sm">
+                  <div className="flex items-center gap-2">
+                    <Badge variant="default">GET</Badge>
+                    <code className="text-xs" dir="ltr">/functions/v1/search-items?query=...</code>
+                    <span className="text-muted-foreground">- بحث عن معاملة</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="default">GET</Badge>
+                    <code className="text-xs" dir="ltr">/functions/v1/get-item-details?item_id=...</code>
+                    <span className="text-muted-foreground">- تفاصيل معاملة</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="secondary">POST</Badge>
+                    <code className="text-xs" dir="ltr">/functions/v1/log-conversation</code>
+                    <span className="text-muted-foreground">- تسجيل محادثة</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-center gap-2 flex-wrap p-4 bg-muted/30 rounded-lg" dir="ltr">
+                <Badge variant="outline" className="py-2 bg-green-500/10">📱 WhatsApp Webhook</Badge>
+                <span>→</span>
+                <Badge variant="outline" className="py-2">Parse Message</Badge>
+                <span>→</span>
+                <Badge variant="outline" className="py-2 bg-purple-500/10">🤖 AI Agent</Badge>
+                <span>→</span>
+                <Badge variant="outline" className="py-2">Prepare Response</Badge>
+                <span>→</span>
+                <Badge variant="outline" className="py-2 bg-green-500/10">📤 Send WhatsApp</Badge>
+                <span>→</span>
+                <Badge variant="outline" className="py-2">Log Conversation</Badge>
               </div>
             </CardContent>
           </Card>
