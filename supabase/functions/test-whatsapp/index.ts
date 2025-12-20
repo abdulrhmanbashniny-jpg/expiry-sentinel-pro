@@ -159,7 +159,7 @@ HR Expiry Reminder System`;
     return new Response(
       JSON.stringify({ 
         success: false, 
-        error: error instanceof Error ? error.message : 'حدث خطأ غير متوقع' 
+        error: 'حدث خطأ في النظام' 
       }),
       { 
         status: 500, 
