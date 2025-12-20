@@ -91,7 +91,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         success: false, 
-        error: error instanceof Error ? error.message : 'حدث خطأ' 
+        error: 'حدث خطأ في النظام' 
       }),
       { 
         status: 500, 
