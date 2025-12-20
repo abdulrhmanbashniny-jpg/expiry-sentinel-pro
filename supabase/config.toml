@@ -2,3 +2,15 @@ project_id = "aazshokdhlodzaafrifh"
 
 [functions.test-whatsapp]
 verify_jwt = false
+
+[functions.get-due-items]
+verify_jwt = false
+
+[functions.send-notification]
+verify_jwt = false
+
+[functions.get-message-template]
+verify_jwt = false
+
+[functions.prepare-message]
+verify_jwt = false
