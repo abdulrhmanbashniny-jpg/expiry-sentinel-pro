@@ -1,0 +1,378 @@
+{
+  "name": "WhatsApp AI Assistant - نظام التنبيهات",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "whatsapp-webhook",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-receiver",
+      "name": "WhatsApp Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 300],
+      "webhookId": "whatsapp-incoming"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true, message: 'تم استلام الرسالة' }) }}",
+        "options": {}
+      },
+      "id": "webhook-response",
+      "name": "Webhook Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract WhatsApp message data from appslink.io webhook\nconst webhookData = $input.first().json;\n\n// Common fields from appslink.io\nconst phone = webhookData.phone || webhookData.from || webhookData.sender || '';\nconst message = webhookData.message || webhookData.text || webhookData.body || '';\nconst messageId = webhookData.messageId || webhookData.id || '';\nconst timestamp = webhookData.timestamp || new Date().toISOString();\n\n// Generate transaction reference number\nconst refNumber = `TXN-${Date.now()}-${Math.random().toString(36).substr(2, 5).toUpperCase()}`;\n\nreturn {\n  phone: phone.replace(/\\D/g, ''), // Clean phone number\n  message: message.trim(),\n  messageId,\n  timestamp,\n  refNumber,\n  rawData: webhookData\n};"
+      },
+      "id": "parse-message",
+      "name": "Parse WhatsApp Message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.SUPABASE_URL }}/functions/v1/get-due-items",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "days_ahead",
+              "value": "30"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "get-items-tool",
+      "name": "Get Due Items Tool",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [850, 150],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "supabase-auth",
+          "name": "Supabase Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "agent": "openAiFunctionsAgent",
+        "promptType": "define",
+        "text": "=أنت مساعد إداري ذكي لنظام تنبيهات انتهاء الصلاحية.\n\nرقم المعاملة الحالي: {{ $('Parse WhatsApp Message').item.json.refNumber }}\nرقم الهاتف: {{ $('Parse WhatsApp Message').item.json.phone }}\n\nرسالة المستخدم:\n{{ $('Parse WhatsApp Message').item.json.message }}\n\n---\n\nمهامك:\n1. الرد على استفسارات المستخدمين حول المعاملات والتنبيهات\n2. البحث عن معاملات باستخدام الرقم التسلسلي أو اسم المعاملة\n3. عرض المعاملات القريبة من الانتهاء\n4. تقديم معلومات مفيدة عن حالة التنبيهات\n\nقواعد الرد:\n- استخدم اللغة العربية دائماً\n- كن مختصراً ومفيداً\n- اذكر رقم المعاملة في كل رد\n- إذا لم تجد معلومات، اعتذر بلطف واقترح بدائل",
+        "options": {
+          "systemMessage": "أنت مساعد إداري متخصص في نظام تنبيهات انتهاء الصلاحية. تساعد المستخدمين في:\n- الاستعلام عن المعاملات والوثائق\n- معرفة تواريخ الانتهاء القادمة\n- البحث عن معاملات محددة\n- تقديم تقارير موجزة\n\nاستخدم الأدوات المتاحة للحصول على البيانات الحقيقية من النظام."
+        }
+      },
+      "id": "ai-agent",
+      "name": "AI Assistant",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [1050, 300]
+    },
+    {
+      "parameters": {
+        "options": {
+          "temperature": 0.7
+        }
+      },
+      "id": "openai-model",
+      "name": "OpenAI Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1,
+      "position": [1050, 500],
+      "credentials": {
+        "openAiApi": {
+          "id": "openai-credentials",
+          "name": "OpenAI API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "name": "get_due_items",
+        "description": "جلب المعاملات القريبة من الانتهاء. يمكن تحديد عدد الأيام للبحث.",
+        "method": "GET",
+        "url": "={{ $env.SUPABASE_URL }}/functions/v1/get-due-items",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "parametersQuery": {
+          "parameters": [
+            {
+              "name": "days_ahead",
+              "valueProvider": "modelOptional",
+              "description": "عدد الأيام للبحث (افتراضي: 30)"
+            }
+          ]
+        },
+        "placeholderDefinitions": {
+          "parameters": []
+        }
+      },
+      "id": "tool-get-due-items",
+      "name": "Tool: Get Due Items",
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1.1,
+      "position": [1250, 500],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "supabase-auth",
+          "name": "Supabase Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "name": "search_items",
+        "description": "البحث عن معاملة بالاسم أو الوصف",
+        "method": "GET",
+        "url": "={{ $env.SUPABASE_URL }}/functions/v1/search-items",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "parametersQuery": {
+          "parameters": [
+            {
+              "name": "query",
+              "valueProvider": "modelRequired",
+              "description": "نص البحث (اسم المعاملة أو جزء منه)"
+            }
+          ]
+        },
+        "placeholderDefinitions": {
+          "parameters": []
+        }
+      },
+      "id": "tool-search-items",
+      "name": "Tool: Search Items",
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1.1,
+      "position": [1400, 500],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "supabase-auth",
+          "name": "Supabase Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "name": "get_item_details",
+        "description": "جلب تفاصيل معاملة محددة بالرقم التسلسلي",
+        "method": "GET",
+        "url": "={{ $env.SUPABASE_URL }}/functions/v1/get-item-details",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "parametersQuery": {
+          "parameters": [
+            {
+              "name": "item_id",
+              "valueProvider": "modelRequired",
+              "description": "رقم المعاملة (UUID)"
+            }
+          ]
+        },
+        "placeholderDefinitions": {
+          "parameters": []
+        }
+      },
+      "id": "tool-get-item-details",
+      "name": "Tool: Get Item Details",
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1.1,
+      "position": [1550, 500],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "supabase-auth",
+          "name": "Supabase Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Prepare the AI response for WhatsApp\nconst aiResponse = $input.first().json;\nconst parsedMessage = $('Parse WhatsApp Message').first().json;\n\n// Extract the AI's text response\nlet responseText = '';\nif (typeof aiResponse.output === 'string') {\n  responseText = aiResponse.output;\n} else if (aiResponse.text) {\n  responseText = aiResponse.text;\n} else {\n  responseText = JSON.stringify(aiResponse);\n}\n\n// Add reference number to response\nconst finalResponse = `📋 رقم المعاملة: ${parsedMessage.refNumber}\\n\\n${responseText}\\n\\n---\\n💬 للمزيد من المساعدة، أرسل استفسارك`;\n\nreturn {\n  phone: parsedMessage.phone,\n  message: finalResponse,\n  refNumber: parsedMessage.refNumber,\n  originalMessage: parsedMessage.message,\n  timestamp: new Date().toISOString()\n};"
+      },
+      "id": "prepare-response",
+      "name": "Prepare WhatsApp Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1300, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://app.appslink.io/api/v1/send-message",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"phone\": \"{{ $json.phone }}\",\n  \"message\": \"{{ $json.message }}\",\n  \"refNumber\": \"{{ $json.refNumber }}\"\n}",
+        "options": {}
+      },
+      "id": "send-whatsapp",
+      "name": "Send WhatsApp via AppsLink",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1500, 300],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "appslink-auth",
+          "name": "AppsLink API Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/functions/v1/log-conversation",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"phone\": \"{{ $('Parse WhatsApp Message').item.json.phone }}\",\n  \"ref_number\": \"{{ $('Parse WhatsApp Message').item.json.refNumber }}\",\n  \"user_message\": \"{{ $('Parse WhatsApp Message').item.json.message }}\",\n  \"ai_response\": \"{{ $('Prepare WhatsApp Response').item.json.message }}\",\n  \"timestamp\": \"{{ $('Prepare WhatsApp Response').item.json.timestamp }}\"\n}",
+        "options": {}
+      },
+      "id": "log-conversation",
+      "name": "Log Conversation",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1700, 300],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "supabase-auth",
+          "name": "Supabase Auth"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "WhatsApp Webhook": {
+      "main": [
+        [
+          {
+            "node": "Webhook Response",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Parse WhatsApp Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse WhatsApp Message": {
+      "main": [
+        [
+          {
+            "node": "AI Assistant",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Assistant": {
+      "main": [
+        [
+          {
+            "node": "Prepare WhatsApp Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Assistant",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tool: Get Due Items": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Assistant",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tool: Search Items": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Assistant",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tool: Get Item Details": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Assistant",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare WhatsApp Response": {
+      "main": [
+        [
+          {
+            "node": "Send WhatsApp via AppsLink",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send WhatsApp via AppsLink": {
+      "main": [
+        [
+          {
+            "node": "Log Conversation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": {
+    "templateId": "whatsapp-ai-assistant",
+    "instanceId": "custom"
+  },
+  "pinData": {},
+  "versionId": "1.0.0",
+  "triggerCount": 0
+}

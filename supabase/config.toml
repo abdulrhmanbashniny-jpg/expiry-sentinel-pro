@@ -14,3 +14,12 @@ verify_jwt = false
 
 [functions.prepare-message]
 verify_jwt = false
+
+[functions.search-items]
+verify_jwt = false
+
+[functions.get-item-details]
+verify_jwt = false
+
+[functions.log-conversation]
+verify_jwt = false
