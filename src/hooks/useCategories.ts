@@ -21,7 +21,7 @@ export const useCategories = () => {
   });
 
   const createCategory = useMutation({
-    mutationFn: async (data: { name: string; description?: string }) => {
+    mutationFn: async (data: { name: string; code?: string; description?: string }) => {
       const { data: category, error } = await supabase
         .from('categories')
         .insert(data)

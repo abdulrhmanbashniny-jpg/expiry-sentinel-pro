@@ -109,6 +109,7 @@ const Items: React.FC = () => {
               <table className="data-table">
                 <thead>
                   <tr>
+                    <th>الرقم التسلسلي</th>
                     <th>العنوان</th>
                     <th>الفئة</th>
                     <th>تاريخ الانتهاء</th>
@@ -120,6 +121,7 @@ const Items: React.FC = () => {
                 <tbody>
                   {filteredItems.map((item) => (
                     <tr key={item.id} className="cursor-pointer" onClick={() => navigate(`/items/${item.id}`)}>
+                      <td className="font-mono text-sm text-primary">{item.ref_number || '-'}</td>
                       <td className="font-medium">{item.title}</td>
                       <td>{item.category?.name || '-'}</td>
                       <td>{format(new Date(item.expiry_date), 'dd/MM/yyyy')}</td>
