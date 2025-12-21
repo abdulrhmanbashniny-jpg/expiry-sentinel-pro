@@ -254,9 +254,10 @@ const Integration: React.FC = () => {
       </Card>
 
       <Tabs defaultValue="endpoints" className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="endpoints">نقاط النهاية</TabsTrigger>
           <TabsTrigger value="workflow">Workflow جاهز</TabsTrigger>
+          <TabsTrigger value="telegram-workflow">🤖 Telegram Bot</TabsTrigger>
           <TabsTrigger value="ai-workflow">AI WhatsApp Bot</TabsTrigger>
           <TabsTrigger value="steps">خطوات الإعداد</TabsTrigger>
         </TabsList>
@@ -375,6 +376,96 @@ const Integration: React.FC = () => {
                 <p className="text-sm text-muted-foreground">
                   2. أضف متغير SUPABASE_URL في إعدادات n8n بالقيمة: <code className="bg-background px-1 rounded">{supabaseUrl}</code>
                 </p>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="telegram-workflow" className="mt-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Code className="h-5 w-5" />
+                🤖 Telegram Bot Workflow
+              </CardTitle>
+              <CardDescription>
+                Bot تيليجرام للتنبيهات التلقائية والاستعلام عن المعاملات
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="rounded-lg border p-4 bg-primary/5">
+                <h4 className="font-semibold mb-2">📋 مميزات هذا الـ Workflow:</h4>
+                <ul className="text-sm space-y-1 text-muted-foreground">
+                  <li>• إرسال تنبيهات تلقائية عبر Telegram</li>
+                  <li>• استقبال الأوامر والرد عليها (/search, /expiring, /help)</li>
+                  <li>• الاستعلام عن المعاملات بالرقم التسلسلي</li>
+                  <li>• تسجيل جميع المحادثات</li>
+                </ul>
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-3">
+                <Button 
+                  className="flex-1"
+                  onClick={() => {
+                    const link = document.createElement('a');
+                    link.href = '/n8n-telegram-workflow.json';
+                    link.download = 'telegram-notification-workflow.json';
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    toast({ title: 'جاري تحميل ملف Telegram Workflow...' });
+                  }}
+                >
+                  <ExternalLink className="h-4 w-4 ml-2" />
+                  تحميل Telegram Workflow JSON
+                </Button>
+              </div>
+
+              <div className="rounded-lg border p-4 bg-warning/10">
+                <h4 className="font-semibold text-warning mb-2">⚙️ إعداد مطلوب:</h4>
+                <ol className="text-sm space-y-2 text-muted-foreground list-decimal list-inside">
+                  <li>أنشئ Bot جديد في Telegram عبر <code className="bg-background px-1 rounded">@BotFather</code></li>
+                  <li>أضف <code className="bg-background px-1 rounded">TELEGRAM_BOT_TOKEN</code> في الـ Secrets</li>
+                  <li>أضف Telegram Credentials في n8n</li>
+                  <li>فعّل Webhook للـ Bot: <code className="bg-background px-1 rounded text-xs">{supabaseUrl}/functions/v1/telegram-webhook</code></li>
+                </ol>
+              </div>
+
+              <div className="rounded-lg border p-4">
+                <h4 className="font-semibold mb-2">🔗 نقاط النهاية للـ Telegram:</h4>
+                <div className="space-y-2 text-sm">
+                  <div className="flex items-center gap-2">
+                    <Badge variant="secondary">POST</Badge>
+                    <code className="text-xs" dir="ltr">/functions/v1/send-telegram</code>
+                    <span className="text-muted-foreground">- إرسال رسالة</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="secondary">POST</Badge>
+                    <code className="text-xs" dir="ltr">/functions/v1/telegram-webhook</code>
+                    <span className="text-muted-foreground">- استقبال الرسائل</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-lg border p-4 bg-muted/30">
+                <h4 className="font-semibold mb-2">📱 أوامر الـ Bot:</h4>
+                <div className="space-y-1 text-sm font-mono" dir="ltr">
+                  <p><code>/start</code> - بدء المحادثة</p>
+                  <p><code>/search [كلمة]</code> - البحث عن معاملة</p>
+                  <p><code>/expiring</code> - المعاملات القريبة من الانتهاء</p>
+                  <p><code>/help</code> - عرض المساعدة</p>
+                  <p><code>LIC-2025-0001</code> - استعلام بالرقم التسلسلي</p>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-center gap-2 flex-wrap p-4 bg-muted/30 rounded-lg" dir="ltr">
+                <Badge variant="outline" className="py-2 bg-blue-500/10">📱 Telegram Webhook</Badge>
+                <span>→</span>
+                <Badge variant="outline" className="py-2">Parse Command</Badge>
+                <span>→</span>
+                <Badge variant="outline" className="py-2">Query Database</Badge>
+                <span>→</span>
+                <Badge variant="outline" className="py-2 bg-blue-500/10">📤 Send Reply</Badge>
               </div>
             </CardContent>
           </Card>
