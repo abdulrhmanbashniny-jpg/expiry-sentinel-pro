@@ -230,6 +230,7 @@ export type Database = {
           id: string
           is_active: boolean
           name: string
+          telegram_id: string | null
           whatsapp_number: string
         }
         Insert: {
@@ -237,6 +238,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           name: string
+          telegram_id?: string | null
           whatsapp_number: string
         }
         Update: {
@@ -244,6 +246,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           name?: string
+          telegram_id?: string | null
           whatsapp_number?: string
         }
         Relationships: []

@@ -30,6 +30,7 @@ export interface Recipient {
   id: string;
   name: string;
   whatsapp_number: string;
+  telegram_id: string | null;
   is_active: boolean;
   created_at: string;
 }

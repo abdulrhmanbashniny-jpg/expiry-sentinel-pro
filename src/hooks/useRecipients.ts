@@ -21,7 +21,7 @@ export const useRecipients = () => {
   });
 
   const createRecipient = useMutation({
-    mutationFn: async (data: { name: string; whatsapp_number: string; is_active?: boolean }) => {
+    mutationFn: async (data: { name: string; whatsapp_number: string; telegram_id?: string | null; is_active?: boolean }) => {
       const { data: recipient, error } = await supabase
         .from('recipients')
         .insert(data)
