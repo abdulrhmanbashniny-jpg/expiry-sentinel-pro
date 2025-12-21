@@ -21,6 +21,7 @@ export interface UserRole {
 export interface Category {
   id: string;
   name: string;
+  code: string | null;
   description: string | null;
   created_at: string;
 }
@@ -43,6 +44,7 @@ export interface ReminderRule {
 
 export interface Item {
   id: string;
+  ref_number: string | null;
   title: string;
   category_id: string | null;
   expiry_date: string;

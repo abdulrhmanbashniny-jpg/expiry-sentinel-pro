@@ -16,18 +16,21 @@ export type Database = {
     Tables: {
       categories: {
         Row: {
+          code: string | null
           created_at: string
           description: string | null
           id: string
           name: string
         }
         Insert: {
+          code?: string | null
           created_at?: string
           description?: string | null
           id?: string
           name: string
         }
         Update: {
+          code?: string | null
           created_at?: string
           description?: string | null
           id?: string
@@ -82,6 +85,7 @@ export type Database = {
           id: string
           notes: string | null
           owner_department: string | null
+          ref_number: string | null
           reminder_rule_id: string | null
           responsible_person: string | null
           status: Database["public"]["Enums"]["item_status"]
@@ -98,6 +102,7 @@ export type Database = {
           id?: string
           notes?: string | null
           owner_department?: string | null
+          ref_number?: string | null
           reminder_rule_id?: string | null
           responsible_person?: string | null
           status?: Database["public"]["Enums"]["item_status"]
@@ -114,6 +119,7 @@ export type Database = {
           id?: string
           notes?: string | null
           owner_department?: string | null
+          ref_number?: string | null
           reminder_rule_id?: string | null
           responsible_person?: string | null
           status?: Database["public"]["Enums"]["item_status"]
