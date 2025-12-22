@@ -41,8 +41,8 @@ const SendTelegramDialog: React.FC<SendTelegramDialogProps> = ({ itemId, itemTit
       });
       
       if (error) throw error;
-      if (data?.message) {
-        setPreparedMessage(data.message);
+      if (data?.success && data?.data?.message) {
+        setPreparedMessage(data.data.message);
       }
     } catch (error) {
       console.error('Error preparing message:', error);
