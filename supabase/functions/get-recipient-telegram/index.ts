@@ -12,7 +12,19 @@ serve(async (req) => {
   }
 
   try {
-    const { recipient_id } = await req.json();
+    let recipient_id: string | undefined;
+    
+    // Handle both GET with query params and POST with body
+    if (req.method === 'GET') {
+      const url = new URL(req.url);
+      recipient_id = url.searchParams.get('recipient_id') || undefined;
+    } else {
+      const body = await req.text();
+      if (body) {
+        const parsed = JSON.parse(body);
+        recipient_id = parsed.recipient_id;
+      }
+    }
 
     if (!recipient_id) {
       return new Response(
