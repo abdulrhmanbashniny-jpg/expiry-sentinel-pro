@@ -8,6 +8,7 @@ import { MainLayout } from "@/components/layout/MainLayout";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import Items from "./pages/Items";
+import ItemDetails from "./pages/ItemDetails";
 import NewItem from "./pages/NewItem";
 import Recipients from "./pages/Recipients";
 import Categories from "./pages/Categories";
@@ -52,6 +53,7 @@ const AppRoutes = () => {
         <Route index element={<Dashboard />} />
         <Route path="items" element={<Items />} />
         <Route path="items/new" element={<NewItem />} />
+        <Route path="items/:id" element={<ItemDetails />} />
         <Route path="recipients" element={<Recipients />} />
         <Route path="categories" element={<Categories />} />
         <Route path="reminder-rules" element={<ReminderRules />} />

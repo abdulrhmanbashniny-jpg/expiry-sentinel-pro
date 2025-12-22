@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Search, Filter, FileText, Trash2, Edit, Archive, MessageSquare } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Plus, Search, FileText, Trash2, Edit, Archive, Send } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -11,6 +11,7 @@ import { useCategories } from '@/hooks/useCategories';
 import { format } from 'date-fns';
 import { ItemStatus } from '@/types/database';
 import TestWhatsAppDialog from '@/components/TestWhatsAppDialog';
+import SendTelegramDialog from '@/components/SendTelegramDialog';
 
 const Items: React.FC = () => {
   const navigate = useNavigate();
@@ -130,6 +131,10 @@ const Items: React.FC = () => {
                       <td onClick={(e) => e.stopPropagation()}>
                         <div className="flex gap-1">
                           <TestWhatsAppDialog 
+                            itemId={item.id} 
+                            itemTitle={item.title}
+                          />
+                          <SendTelegramDialog 
                             itemId={item.id} 
                             itemTitle={item.title}
                           />
