@@ -11,7 +11,20 @@ serve(async (req) => {
   }
 
   try {
-    const { chat_id, message, parse_mode } = await req.json();
+    const body = await req.json();
+    const { chat_id, message, parse_mode, action } = body;
+
+    // Handle status check request
+    if (action === 'check') {
+      const TELEGRAM_BOT_TOKEN = Deno.env.get('TELEGRAM_BOT_TOKEN');
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          configured: !!TELEGRAM_BOT_TOKEN 
+        }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     console.log('Sending Telegram message to:', chat_id);
 
