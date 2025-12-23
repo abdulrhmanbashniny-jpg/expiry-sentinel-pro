@@ -53,21 +53,32 @@ serve(async (req) => {
 رقم المرجع: <code>${refNumber}</code>`;
     } 
     else if (text.startsWith('/search')) {
-      const query = text.replace('/search', '').trim();
+      let query = text.replace('/search', '').trim();
       if (!query) {
         responseText = '❌ الرجاء إدخال كلمة للبحث\n\nمثال: /search رخصة';
       } else {
-        // Search items
-        const { data: items, error } = await supabase
-          .from('items')
-          .select(`
-            id, ref_number, title, expiry_date, status,
-            categories:category_id(name, code)
-          `)
-          .or(`title.ilike.%${query}%,notes.ilike.%${query}%,responsible_person.ilike.%${query}%,ref_number.ilike.%${query}%`)
-          .eq('status', 'active')
-          .order('expiry_date')
-          .limit(5);
+        // Sanitize input: only allow letters (Arabic/English), numbers, spaces, and basic punctuation
+        const sanitizedQuery = query
+          .replace(/[%_\\'";\-\-]/g, '') // Remove SQL special characters
+          .substring(0, 100); // Limit length
+        
+        if (!sanitizedQuery || !/^[\p{L}\p{N}\s\-_.]+$/u.test(sanitizedQuery)) {
+          responseText = '❌ حروف غير مسموحة في البحث';
+        } else {
+          // Escape special ILIKE characters
+          const escapedQuery = sanitizedQuery.replace(/[%_]/g, '');
+          
+          // Search items with sanitized input
+          const { data: items, error } = await supabase
+            .from('items')
+            .select(`
+              id, ref_number, title, expiry_date, status,
+              categories:category_id(name, code)
+            `)
+            .or(`title.ilike.%${escapedQuery}%,notes.ilike.%${escapedQuery}%,responsible_person.ilike.%${escapedQuery}%,ref_number.ilike.%${escapedQuery}%`)
+            .eq('status', 'active')
+            .order('expiry_date')
+            .limit(5);
 
         if (error) {
           console.error('Search error:', error);
@@ -83,6 +94,7 @@ serve(async (req) => {
             responseText += `   📌 الرقم: <code>${item.ref_number || 'غير محدد'}</code>\n`;
             responseText += `   📅 الانتهاء: ${item.expiry_date} (${status})\n\n`;
           });
+        }
         }
       }
     }
