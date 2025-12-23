@@ -6,6 +6,26 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Authentication helper
+async function verifyAuth(req: Request) {
+  const authHeader = req.headers.get('Authorization');
+  if (!authHeader) {
+    return { user: null, error: 'Missing authorization header' };
+  }
+
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+  const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+  const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+    global: { headers: { Authorization: authHeader } }
+  });
+
+  const { data: { user }, error } = await supabase.auth.getUser();
+  if (error || !user) {
+    return { user: null, error: 'Unauthorized' };
+  }
+  return { user, error: null };
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -13,9 +33,18 @@ serve(async (req) => {
   }
 
   try {
+    // Verify authentication
+    const { user, error: authError } = await verifyAuth(req);
+    if (authError || !user) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const { item_id, recipient_id, test_message } = await req.json();
     
-    console.log('Test WhatsApp notification request:', { item_id, recipient_id, test_message });
+    console.log('Test WhatsApp notification request:', { item_id, recipient_id, by_user: user.id });
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;

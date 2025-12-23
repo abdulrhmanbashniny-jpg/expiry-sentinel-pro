@@ -6,12 +6,41 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Authentication helper
+async function verifyAuth(req: Request) {
+  const authHeader = req.headers.get('Authorization');
+  if (!authHeader) {
+    return { user: null, error: 'Missing authorization header' };
+  }
+
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+  const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+  const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+    global: { headers: { Authorization: authHeader } }
+  });
+
+  const { data: { user }, error } = await supabase.auth.getUser();
+  if (error || !user) {
+    return { user: null, error: 'Unauthorized' };
+  }
+  return { user, error: null };
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
+    // Verify authentication
+    const { user, error: authError } = await verifyAuth(req);
+    if (authError || !user) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const url = new URL(req.url);
     const rawQuery = url.searchParams.get('query') || '';
 
@@ -44,7 +73,7 @@ serve(async (req) => {
     // Escape any remaining special ILIKE characters
     const escapedQuery = sanitizedQuery.replace(/[%_]/g, '');
 
-    console.log('Searching for:', escapedQuery);
+    console.log('Searching for:', escapedQuery, 'by user:', user.id);
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
