@@ -6,6 +6,26 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Authentication helper
+async function verifyAuth(req: Request) {
+  const authHeader = req.headers.get('Authorization');
+  if (!authHeader) {
+    return { user: null, error: 'Missing authorization header' };
+  }
+
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+  const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+  const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+    global: { headers: { Authorization: authHeader } }
+  });
+
+  const { data: { user }, error } = await supabase.auth.getUser();
+  if (error || !user) {
+    return { user: null, error: 'Unauthorized' };
+  }
+  return { user, error: null };
+}
+
 const defaultTemplate = `🔔 تنبيه: {{title}}
 
 📅 تاريخ الانتهاء: {{expiry_date}}
@@ -26,6 +46,15 @@ serve(async (req) => {
   }
 
   try {
+    // Verify authentication
+    const { user, error: authError } = await verifyAuth(req);
+    if (authError || !user) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const { item_id, recipient_id } = await req.json();
 
     if (!item_id || !recipient_id) {
@@ -100,6 +129,7 @@ serve(async (req) => {
         success: true,
         data: {
           phone: recipient.whatsapp_number,
+          telegram_id: recipient.telegram_id,
           recipient_name: recipient.name,
           message,
           item_id: item.id,
