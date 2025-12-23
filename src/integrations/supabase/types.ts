@@ -38,6 +38,39 @@ export type Database = {
         }
         Relationships: []
       }
+      conversation_logs: {
+        Row: {
+          bot_response: string | null
+          created_at: string | null
+          id: string
+          metadata: Json | null
+          platform: string
+          ref_number: string
+          user_identifier: string | null
+          user_message: string | null
+        }
+        Insert: {
+          bot_response?: string | null
+          created_at?: string | null
+          id?: string
+          metadata?: Json | null
+          platform: string
+          ref_number: string
+          user_identifier?: string | null
+          user_message?: string | null
+        }
+        Update: {
+          bot_response?: string | null
+          created_at?: string | null
+          id?: string
+          metadata?: Json | null
+          platform?: string
+          ref_number?: string
+          user_identifier?: string | null
+          user_message?: string | null
+        }
+        Relationships: []
+      }
       item_recipients: {
         Row: {
           created_at: string

@@ -199,15 +199,15 @@ serve(async (req) => {
         })
       });
 
-      // Log conversation
-      await supabase.from('settings').insert({
-        key: `telegram_${refNumber}`,
-        value: {
-          chat_id: chatId,
-          user: fromUser,
-          message: text,
-          response: responseText,
-          timestamp: new Date().toISOString()
+      // Log conversation to dedicated table
+      await supabase.from('conversation_logs').insert({
+        ref_number: refNumber,
+        platform: 'telegram',
+        user_identifier: chatId.toString(),
+        user_message: text,
+        bot_response: responseText,
+        metadata: {
+          user: fromUser
         }
       });
     }
