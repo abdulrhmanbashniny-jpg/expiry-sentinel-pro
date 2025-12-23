@@ -30,21 +30,18 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Store in settings table as conversation log
-    const conversationData = {
-      phone,
-      ref_number,
-      user_message,
-      ai_response,
-      timestamp: timestamp || new Date().toISOString()
-    };
-
-    // Using settings table to store conversation logs
+    // Store in conversation_logs table (properly secured)
     const { data, error } = await supabase
-      .from('settings')
+      .from('conversation_logs')
       .insert({
-        key: `conversation_${ref_number}`,
-        value: conversationData
+        ref_number: ref_number,
+        platform: 'whatsapp',
+        user_identifier: phone,
+        user_message: user_message,
+        bot_response: ai_response,
+        metadata: {
+          timestamp: timestamp || new Date().toISOString()
+        }
       })
       .select()
       .single();
