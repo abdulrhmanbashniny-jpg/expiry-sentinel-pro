@@ -13,9 +13,9 @@ serve(async (req) => {
 
   try {
     const url = new URL(req.url);
-    const query = url.searchParams.get('query') || '';
+    const rawQuery = url.searchParams.get('query') || '';
 
-    if (!query.trim()) {
+    if (!rawQuery.trim()) {
       return new Response(
         JSON.stringify({ 
           success: false, 
@@ -25,13 +25,32 @@ serve(async (req) => {
       );
     }
 
-    console.log('Searching for:', query);
+    // Sanitize input: remove SQL special characters and limit length
+    const sanitizedQuery = rawQuery
+      .replace(/[%_\\'";\-\-]/g, '') // Remove SQL special characters
+      .substring(0, 100); // Limit length
+
+    // Validate: only allow letters (Arabic/English), numbers, spaces, and basic punctuation
+    if (!sanitizedQuery || !/^[\p{L}\p{N}\s\-_.]+$/u.test(sanitizedQuery)) {
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'حروف غير مسموحة في البحث' 
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Escape any remaining special ILIKE characters
+    const escapedQuery = sanitizedQuery.replace(/[%_]/g, '');
+
+    console.log('Searching for:', escapedQuery);
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Search in items by title or notes
+    // Search in items by title or notes with sanitized input
     const { data: items, error } = await supabase
       .from('items')
       .select(`
@@ -47,7 +66,7 @@ serve(async (req) => {
         categories(id, name),
         reminder_rules(id, name, days_before)
       `)
-      .or(`title.ilike.%${query}%,notes.ilike.%${query}%,responsible_person.ilike.%${query}%,owner_department.ilike.%${query}%`)
+      .or(`title.ilike.%${escapedQuery}%,notes.ilike.%${escapedQuery}%,responsible_person.ilike.%${escapedQuery}%,owner_department.ilike.%${escapedQuery}%`)
       .order('expiry_date', { ascending: true })
       .limit(10);
 
@@ -81,12 +100,12 @@ serve(async (req) => {
       };
     });
 
-    console.log(`Found ${formattedItems.length} items matching "${query}"`);
+    console.log(`Found ${formattedItems.length} items matching "${escapedQuery}"`);
 
     return new Response(
       JSON.stringify({
         success: true,
-        query: query,
+        query: escapedQuery,
         count: formattedItems.length,
         items: formattedItems
       }),
