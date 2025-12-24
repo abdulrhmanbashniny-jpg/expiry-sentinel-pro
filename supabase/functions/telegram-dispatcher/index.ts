@@ -22,6 +22,8 @@ const SYSTEM_PROMPT = `أنت مساعد إداري ذكي لنظام تنبيه
 2. كن مختصراً ومحترفاً
 3. إذا طُلب منك عملية لا تملك صلاحيتها، اعتذر بلطف واشرح السبب
 4. للحذف أو التعديلات الحساسة، تأكد أن المستخدم admin
+5. عند /start أو /help، قدم نفسك واشرح الأوامر المتاحة
+6. استخدم الأدوات للإجابة على أسئلة المعاملات
 
 الأدوات المتاحة لك:
 - search_items: البحث عن معاملات
@@ -32,7 +34,13 @@ const SYSTEM_PROMPT = `أنت مساعد إداري ذكي لنظام تنبيه
 - delete_item: حذف معاملة (admin فقط)
 
 دور المستخدم الحالي: {USER_ROLE}
-اسم المستخدم: {USER_NAME}`;
+اسم المستخدم: {USER_NAME}
+
+أمثلة على الاستخدام:
+- "ما المعاملات القريبة من الانتهاء؟" -> استخدم get_due_items
+- "ابحث عن رخصة البلدية" -> استخدم search_items
+- "تفاصيل المعاملة REF-2025-0001" -> استخدم get_item_details
+- "/start" أو "/help" -> قدم تعريف بالنظام والأوامر المتاحة`;
 
 // Tool definitions for AI
 const TOOLS = [
@@ -40,7 +48,7 @@ const TOOLS = [
     type: "function",
     function: {
       name: "search_items",
-      description: "البحث عن معاملات بالاسم أو الوصف",
+      description: "البحث عن معاملات بالاسم أو الوصف أو المسؤول",
       parameters: {
         type: "object",
         properties: {
@@ -68,7 +76,7 @@ const TOOLS = [
     type: "function",
     function: {
       name: "get_due_items",
-      description: "الحصول على المعاملات القريبة من الانتهاء",
+      description: "الحصول على المعاملات القريبة من الانتهاء خلال عدد أيام محدد",
       parameters: {
         type: "object",
         properties: {
@@ -132,7 +140,7 @@ const TOOLS = [
 
 // Execute tool functions
 async function executeTool(supabase: any, toolName: string, args: any, userRole: string): Promise<string> {
-  console.log(`Executing tool: ${toolName} with args:`, args);
+  console.log(`Executing tool: ${toolName} with args:`, JSON.stringify(args));
   
   switch (toolName) {
     case "search_items": {
@@ -142,12 +150,16 @@ async function executeTool(supabase: any, toolName: string, args: any, userRole:
         .or(`title.ilike.%${args.query}%,notes.ilike.%${args.query}%,responsible_person.ilike.%${args.query}%`)
         .limit(10);
       
-      if (error) return `خطأ في البحث: ${error.message}`;
-      if (!data?.length) return "لم يتم العثور على نتائج";
+      if (error) {
+        console.error('Search error:', error);
+        return `خطأ في البحث: ${error.message}`;
+      }
+      if (!data?.length) return "لم يتم العثور على نتائج مطابقة للبحث";
       
-      return data.map((item: any) => 
-        `📄 ${item.ref_number}: ${item.title}\n   📅 ${item.expiry_date} | 👤 ${item.responsible_person || 'غير محدد'} | 📁 ${item.category?.name || 'بدون فئة'}`
-      ).join('\n\n');
+      return `نتائج البحث (${data.length}):\n━━━━━━━━━━━━━━━━━━━━\n` + 
+        data.map((item: any) => 
+          `📄 ${item.ref_number}: ${item.title}\n   📅 ${item.expiry_date} | 👤 ${item.responsible_person || 'غير محدد'} | 📁 ${item.category?.name || 'بدون فئة'}`
+        ).join('\n\n');
     }
     
     case "get_item_details": {
@@ -157,7 +169,10 @@ async function executeTool(supabase: any, toolName: string, args: any, userRole:
         .eq('ref_number', args.ref_number)
         .single();
       
-      if (error) return `خطأ: ${error.message}`;
+      if (error) {
+        console.error('Item details error:', error);
+        return `خطأ: ${error.message}`;
+      }
       if (!data) return "المعاملة غير موجودة";
       
       const today = new Date();
@@ -184,18 +199,25 @@ async function executeTool(supabase: any, toolName: string, args: any, userRole:
       
       const { data, error } = await supabase
         .from('items')
-        .select('ref_number, title, expiry_date, responsible_person')
+        .select('ref_number, title, expiry_date, responsible_person, category:categories(name)')
         .eq('status', 'active')
         .gte('expiry_date', today)
         .lte('expiry_date', futureDate.toISOString().split('T')[0])
         .order('expiry_date', { ascending: true })
         .limit(15);
       
-      if (error) return `خطأ: ${error.message}`;
-      if (!data?.length) return `لا توجد معاملات تنتهي خلال ${days} أيام القادمة ✅`;
+      if (error) {
+        console.error('Due items error:', error);
+        return `خطأ: ${error.message}`;
+      }
+      if (!data?.length) return `✅ لا توجد معاملات تنتهي خلال ${days} أيام القادمة`;
       
-      return `⏰ المعاملات التي تنتهي خلال ${days} أيام:\n━━━━━━━━━━━━━━━━━━━━\n` +
-        data.map((item: any) => `📄 ${item.ref_number}: ${item.title}\n   📅 ${item.expiry_date} | 👤 ${item.responsible_person || 'غير محدد'}`).join('\n\n');
+      return `⏰ المعاملات التي تنتهي خلال ${days} أيام (${data.length}):\n━━━━━━━━━━━━━━━━━━━━\n` +
+        data.map((item: any) => {
+          const expiryDate = new Date(item.expiry_date);
+          const daysLeft = Math.ceil((expiryDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
+          return `📄 ${item.ref_number}: ${item.title}\n   📅 ${item.expiry_date} (${daysLeft} يوم) | 👤 ${item.responsible_person || 'غير محدد'}`;
+        }).join('\n\n');
     }
     
     case "create_item": {
@@ -216,7 +238,10 @@ async function executeTool(supabase: any, toolName: string, args: any, userRole:
         .select('ref_number, title')
         .single();
       
-      if (error) return `خطأ في الإنشاء: ${error.message}`;
+      if (error) {
+        console.error('Create error:', error);
+        return `خطأ في الإنشاء: ${error.message}`;
+      }
       return `✅ تم إنشاء المعاملة بنجاح!\nالرقم المرجعي: ${data.ref_number}\nالعنوان: ${data.title}`;
     }
     
@@ -237,7 +262,10 @@ async function executeTool(supabase: any, toolName: string, args: any, userRole:
         .update(updates)
         .eq('ref_number', args.ref_number);
       
-      if (error) return `خطأ في التحديث: ${error.message}`;
+      if (error) {
+        console.error('Update error:', error);
+        return `خطأ في التحديث: ${error.message}`;
+      }
       return `✅ تم تحديث المعاملة ${args.ref_number} بنجاح`;
     }
     
@@ -251,7 +279,10 @@ async function executeTool(supabase: any, toolName: string, args: any, userRole:
         .delete()
         .eq('ref_number', args.ref_number);
       
-      if (error) return `خطأ في الحذف: ${error.message}`;
+      if (error) {
+        console.error('Delete error:', error);
+        return `خطأ في الحذف: ${error.message}`;
+      }
       return `🗑️ تم حذف المعاملة ${args.ref_number} بنجاح`;
     }
     
@@ -265,6 +296,8 @@ async function callAI(messages: any[], userRole: string, userName: string): Prom
   const systemPrompt = SYSTEM_PROMPT
     .replace('{USER_ROLE}', userRole)
     .replace('{USER_NAME}', userName);
+  
+  console.log('Calling AI with messages:', JSON.stringify(messages.slice(-3)));
   
   const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
     method: 'POST',
@@ -286,10 +319,12 @@ async function callAI(messages: any[], userRole: string, userName: string): Prom
   if (!response.ok) {
     const errorText = await response.text();
     console.error('AI Gateway error:', response.status, errorText);
-    throw new Error(`AI error: ${response.status}`);
+    throw new Error(`AI error: ${response.status} - ${errorText}`);
   }
   
-  return response.json();
+  const result = await response.json();
+  console.log('AI response:', JSON.stringify(result.choices?.[0]?.message));
+  return result;
 }
 
 serve(async (req) => {
@@ -300,60 +335,90 @@ serve(async (req) => {
   try {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     
+    // Get request body first to log it
+    const body = await req.json();
+    console.log('Received request body:', JSON.stringify(body));
+    
     // Verify internal key
     const internalKey = req.headers.get('x-internal-key');
-    const { data: integration } = await supabase
-      .from('integrations')
-      .select('config')
-      .eq('key', 'n8n')
-      .single();
+    const expectedKey = Deno.env.get('INTERNAL_FUNCTION_KEY');
     
-    const expectedKey = integration?.config?.internal_key;
-    if (!internalKey || internalKey !== expectedKey) {
+    // Also check from integrations table as fallback
+    if (!expectedKey) {
+      const { data: integration } = await supabase
+        .from('integrations')
+        .select('config')
+        .eq('key', 'n8n')
+        .single();
+      
+      const integrationKey = integration?.config?.internal_key;
+      if (!internalKey || internalKey !== integrationKey) {
+        console.error('Auth failed - no matching key');
+        return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+    } else if (internalKey !== expectedKey) {
+      console.error('Auth failed - key mismatch');
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
     
-    const { telegram_user_id, chat_id, message_text } = await req.json();
+    // Extract fields - handle different possible field names from n8n
+    const telegram_user_id = body.telegram_user_id || body.user_id || body.from?.id?.toString();
+    const chat_id = body.chat_id || body.message?.chat?.id;
+    const message_text = body.message_text || body.text || body.message?.text || '';
     
-    console.log(`Processing message from Telegram user: ${telegram_user_id}`);
+    console.log(`Processing: user_id=${telegram_user_id}, chat_id=${chat_id}, text="${message_text}"`);
+    
+    if (!chat_id || !message_text) {
+      return new Response(JSON.stringify({ 
+        error: 'Missing required fields',
+        chat_id: chat_id || 'unknown',
+        reply_text: 'عذراً، لم أستطع قراءة رسالتك. حاول مرة أخرى.'
+      }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
     
     // Find user by telegram_user_id
     let userRole = 'employee';
     let userName = 'مستخدم';
-    let userId: string | null = null;
     
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('user_id, full_name')
-      .eq('telegram_user_id', telegram_user_id)
-      .single();
-    
-    if (profile) {
-      userId = profile.user_id;
-      userName = profile.full_name || 'مستخدم';
-      
-      // Get user role
-      const { data: roleData } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', profile.user_id)
+    if (telegram_user_id) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('user_id, full_name')
+        .eq('telegram_user_id', telegram_user_id.toString())
         .single();
       
-      if (roleData) {
-        userRole = roleData.role;
+      if (profile) {
+        userName = profile.full_name || 'مستخدم';
+        
+        // Get user role
+        const { data: roleData } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', profile.user_id)
+          .single();
+        
+        if (roleData) {
+          userRole = roleData.role;
+        }
       }
     }
     
     console.log(`User: ${userName}, Role: ${userRole}`);
     
-    // Get conversation history (last 10 messages)
+    // Get conversation history (last 5 exchanges)
     const { data: history } = await supabase
       .from('conversation_logs')
       .select('user_message, bot_response')
-      .eq('user_identifier', telegram_user_id)
+      .eq('user_identifier', telegram_user_id?.toString() || chat_id?.toString())
       .eq('platform', 'telegram')
       .order('created_at', { ascending: false })
       .limit(5);
@@ -361,9 +426,9 @@ serve(async (req) => {
     // Build messages array
     const messages: any[] = [];
     
-    // Add history in reverse order
+    // Add history in reverse order (oldest first)
     if (history && history.length > 0) {
-      for (const log of history.reverse()) {
+      for (const log of [...history].reverse()) {
         if (log.user_message) {
           messages.push({ role: 'user', content: log.user_message });
         }
@@ -378,18 +443,37 @@ serve(async (req) => {
     
     // Call AI
     let aiResponse = await callAI(messages, userRole, userName);
-    let assistantMessage = aiResponse.choices[0].message;
+    let assistantMessage = aiResponse.choices?.[0]?.message;
+    
+    if (!assistantMessage) {
+      throw new Error('No response from AI');
+    }
+    
     let replyText = '';
     
     // Process tool calls if any
-    while (assistantMessage.tool_calls && assistantMessage.tool_calls.length > 0) {
+    let iterations = 0;
+    const maxIterations = 5;
+    
+    while (assistantMessage.tool_calls && assistantMessage.tool_calls.length > 0 && iterations < maxIterations) {
+      iterations++;
+      console.log(`Processing tool calls (iteration ${iterations})`);
+      
       const toolResults: any[] = [];
       
       for (const toolCall of assistantMessage.tool_calls) {
         const toolName = toolCall.function.name;
-        const toolArgs = JSON.parse(toolCall.function.arguments);
+        let toolArgs = {};
         
+        try {
+          toolArgs = JSON.parse(toolCall.function.arguments || '{}');
+        } catch (e) {
+          console.error('Failed to parse tool args:', toolCall.function.arguments);
+        }
+        
+        console.log(`Executing tool: ${toolName}`);
         const result = await executeTool(supabase, toolName, toolArgs, userRole);
+        console.log(`Tool result: ${result.substring(0, 200)}...`);
         
         toolResults.push({
           role: 'tool',
@@ -404,25 +488,30 @@ serve(async (req) => {
       
       // Call AI again with tool results
       aiResponse = await callAI(messages, userRole, userName);
-      assistantMessage = aiResponse.choices[0].message;
+      assistantMessage = aiResponse.choices?.[0]?.message;
+      
+      if (!assistantMessage) {
+        throw new Error('No response from AI after tool call');
+      }
     }
     
-    replyText = assistantMessage.content || 'عذراً، لم أتمكن من معالجة طلبك';
+    replyText = assistantMessage.content || 'عذراً، لم أتمكن من معالجة طلبك. يرجى المحاولة مرة أخرى.';
+    
+    console.log(`Final reply: ${replyText.substring(0, 200)}...`);
     
     // Log conversation
     await supabase.from('conversation_logs').insert({
-      user_identifier: telegram_user_id,
+      user_identifier: telegram_user_id?.toString() || chat_id?.toString(),
       platform: 'telegram',
       ref_number: `TG-${Date.now()}`,
       user_message: message_text,
       bot_response: replyText,
-      metadata: { chat_id, user_role: userRole }
+      metadata: { chat_id, user_role: userRole, user_name: userName }
     });
     
     return new Response(JSON.stringify({
       chat_id,
-      reply_text: replyText,
-      reply_markup: null
+      reply_text: replyText
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
