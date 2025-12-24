@@ -15,6 +15,9 @@ import Categories from "./pages/Categories";
 import ReminderRules from "./pages/ReminderRules";
 import Settings from "./pages/Settings";
 import Integration from "./pages/Integration";
+import Integrations from "./pages/Integrations";
+import Security from "./pages/Security";
+import TeamManagement from "./pages/TeamManagement";
 import NotFound from "./pages/NotFound";
 import { Loader2 } from "lucide-react";
 
@@ -58,6 +61,9 @@ const AppRoutes = () => {
         <Route path="categories" element={<Categories />} />
         <Route path="reminder-rules" element={<ReminderRules />} />
         <Route path="settings" element={<Settings />} />
+        <Route path="security" element={<Security />} />
+        <Route path="team-management" element={<TeamManagement />} />
+        <Route path="integrations" element={<Integrations />} />
         <Route path="integration" element={<Integration />} />
       </Route>
       <Route path="*" element={<NotFound />} />
