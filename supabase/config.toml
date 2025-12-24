@@ -44,3 +44,9 @@ verify_jwt = false
 
 [functions.appslink-webhook]
 verify_jwt = false
+
+[functions.telegram-dispatcher]
+verify_jwt = false
+
+[functions.ai-advisor]
+verify_jwt = true
