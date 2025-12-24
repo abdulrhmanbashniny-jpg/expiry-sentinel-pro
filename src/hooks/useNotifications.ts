@@ -1,6 +1,26 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { NotificationLog } from '@/types/database';
+
+interface NotificationWithRelations {
+  id: string;
+  item_id: string;
+  recipient_id: string;
+  reminder_day: number;
+  scheduled_for: string;
+  status: string;
+  sent_at: string | null;
+  error_message: string | null;
+  created_at: string;
+  provider_message_id: string | null;
+  seen_at: string | null;
+  seen_by_user_id: string | null;
+  escalation_status: string | null;
+  escalated_to_supervisor_at: string | null;
+  escalated_to_admin_at: string | null;
+  delay_reason: string | null;
+  item: { title: string } | null;
+  recipient: { name: string; whatsapp_number?: string } | null;
+}
 
 export const useNotifications = (itemId?: string) => {
   return useQuery({
@@ -23,7 +43,7 @@ export const useNotifications = (itemId?: string) => {
       const { data, error } = await query;
 
       if (error) throw error;
-      return data as (NotificationLog & { item: any; recipient: any })[];
+      return data as unknown as NotificationWithRelations[];
     },
   });
 };
@@ -43,7 +63,7 @@ export const useRecentNotifications = () => {
         .limit(10);
 
       if (error) throw error;
-      return data as (NotificationLog & { item: any; recipient: any })[];
+      return data as unknown as NotificationWithRelations[];
     },
   });
 };

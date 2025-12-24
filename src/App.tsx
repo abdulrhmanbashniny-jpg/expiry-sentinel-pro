@@ -18,6 +18,7 @@ import Integration from "./pages/Integration";
 import Integrations from "./pages/Integrations";
 import Security from "./pages/Security";
 import TeamManagement from "./pages/TeamManagement";
+import AIAdvisor from "./pages/AIAdvisor";
 import NotFound from "./pages/NotFound";
 import { Loader2 } from "lucide-react";
 
@@ -66,6 +67,7 @@ const AppRoutes = () => {
         <Route path="team" element={<Navigate to="/team-management" replace />} />
         <Route path="integrations" element={<Integrations />} />
         <Route path="integration" element={<Integration />} />
+        <Route path="ai-advisor" element={<AIAdvisor />} />
       </Route>
       <Route path="*" element={<NotFound />} />
     </Routes>

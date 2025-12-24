@@ -14,6 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_conversations: {
+        Row: {
+          content: string
+          created_at: string | null
+          id: string
+          metadata: Json | null
+          role: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string | null
+          id?: string
+          metadata?: Json | null
+          role?: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string | null
+          id?: string
+          metadata?: Json | null
+          role?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       categories: {
         Row: {
           code: string | null
@@ -21,6 +48,7 @@ export type Database = {
           description: string | null
           id: string
           name: string
+          risk_level: string | null
         }
         Insert: {
           code?: string | null
@@ -28,6 +56,7 @@ export type Database = {
           description?: string | null
           id?: string
           name: string
+          risk_level?: string | null
         }
         Update: {
           code?: string | null
@@ -35,6 +64,100 @@ export type Database = {
           description?: string | null
           id?: string
           name?: string
+          risk_level?: string | null
+        }
+        Relationships: []
+      }
+      compliance_reports: {
+        Row: {
+          ai_analysis: string | null
+          created_at: string | null
+          generated_by: string | null
+          id: string
+          period_end: string
+          period_start: string
+          report_data: Json | null
+          report_type: string
+          sent_at: string | null
+          summary_text: string | null
+          title: string
+        }
+        Insert: {
+          ai_analysis?: string | null
+          created_at?: string | null
+          generated_by?: string | null
+          id?: string
+          period_end: string
+          period_start: string
+          report_data?: Json | null
+          report_type: string
+          sent_at?: string | null
+          summary_text?: string | null
+          title: string
+        }
+        Update: {
+          ai_analysis?: string | null
+          created_at?: string | null
+          generated_by?: string | null
+          id?: string
+          period_end?: string
+          period_start?: string
+          report_data?: Json | null
+          report_type?: string
+          sent_at?: string | null
+          summary_text?: string | null
+          title?: string
+        }
+        Relationships: []
+      }
+      compliance_scores: {
+        Row: {
+          avg_delay_days: number | null
+          calculated_at: string | null
+          created_at: string | null
+          id: string
+          late_items: number | null
+          on_time_items: number | null
+          period_end: string
+          period_start: string
+          period_type: string
+          reference_id: string
+          reference_name: string | null
+          score: number
+          score_type: string
+          total_items: number | null
+        }
+        Insert: {
+          avg_delay_days?: number | null
+          calculated_at?: string | null
+          created_at?: string | null
+          id?: string
+          late_items?: number | null
+          on_time_items?: number | null
+          period_end: string
+          period_start: string
+          period_type: string
+          reference_id: string
+          reference_name?: string | null
+          score?: number
+          score_type: string
+          total_items?: number | null
+        }
+        Update: {
+          avg_delay_days?: number | null
+          calculated_at?: string | null
+          created_at?: string | null
+          id?: string
+          late_items?: number | null
+          on_time_items?: number | null
+          period_end?: string
+          period_start?: string
+          period_type?: string
+          reference_id?: string
+          reference_name?: string | null
+          score?: number
+          score_type?: string
+          total_items?: number | null
         }
         Relationships: []
       }
@@ -242,6 +365,7 @@ export type Database = {
       notification_log: {
         Row: {
           created_at: string
+          delay_reason: string | null
           error_message: string | null
           escalated_to_admin_at: string | null
           escalated_to_supervisor_at: string | null
@@ -259,6 +383,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          delay_reason?: string | null
           error_message?: string | null
           escalated_to_admin_at?: string | null
           escalated_to_supervisor_at?: string | null
@@ -276,6 +401,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          delay_reason?: string | null
           error_message?: string | null
           escalated_to_admin_at?: string | null
           escalated_to_supervisor_at?: string | null
@@ -314,6 +440,7 @@ export type Database = {
           email: string | null
           full_name: string | null
           id: string
+          telegram_user_id: string | null
           updated_at: string
           user_id: string
         }
@@ -322,6 +449,7 @@ export type Database = {
           email?: string | null
           full_name?: string | null
           id?: string
+          telegram_user_id?: string | null
           updated_at?: string
           user_id: string
         }
@@ -330,6 +458,7 @@ export type Database = {
           email?: string | null
           full_name?: string | null
           id?: string
+          telegram_user_id?: string | null
           updated_at?: string
           user_id?: string
         }
