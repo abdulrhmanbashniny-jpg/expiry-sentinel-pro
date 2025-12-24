@@ -8,6 +8,7 @@ interface CreateItemData {
   category_id: string | null;
   expiry_date: string;
   expiry_time?: string;
+  department_id: string; // Required - Data Quality Guard
   owner_department?: string;
   responsible_person?: string;
   notes?: string;
@@ -39,7 +40,49 @@ export const useItems = () => {
 
   const createItem = useMutation({
     mutationFn: async (data: CreateItemData) => {
+      // Data Quality Guard: Validate department_id
+      if (!data.department_id) {
+        throw new Error('يجب تحديد القسم المالك للمعاملة');
+      }
+
       const { data: userData } = await supabase.auth.getUser();
+      
+      // Data Quality Guard: Check if user belongs to the department
+      const { data: userScope } = await supabase
+        .from('user_department_scopes')
+        .select('id')
+        .eq('user_id', userData.user?.id)
+        .eq('department_id', data.department_id)
+        .maybeSingle();
+      
+      // Check if user is admin (admins can create for any department)
+      const { data: userRole } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', userData.user?.id)
+        .single();
+      
+      const isAdmin = userRole?.role === 'admin' || userRole?.role === 'system_admin';
+      
+      if (!userScope && !isAdmin) {
+        console.warn('Data Quality Warning: User creating item for department they do not belong to', {
+          user_id: userData.user?.id,
+          department_id: data.department_id
+        });
+        // Log to item_status_log for audit
+        await supabase.from('item_status_log').insert({
+          item_id: '00000000-0000-0000-0000-000000000000', // Placeholder - will be updated
+          old_status: null,
+          new_status: 'new',
+          reason: 'DATA_QUALITY_WARNING: User not linked to department',
+          channel: 'web',
+          metadata: { 
+            user_id: userData.user?.id, 
+            department_id: data.department_id,
+            warning_type: 'department_mismatch'
+          }
+        });
+      }
       
       const { data: item, error } = await supabase
         .from('items')
@@ -48,6 +91,7 @@ export const useItems = () => {
           category_id: data.category_id,
           expiry_date: data.expiry_date,
           expiry_time: data.expiry_time || '09:00',
+          department_id: data.department_id,
           owner_department: data.owner_department || null,
           responsible_person: data.responsible_person || null,
           notes: data.notes || null,
