@@ -1,13 +1,17 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
-import { AppRole } from '@/types/database';
+import { AppRole, hasRoleOrHigher } from '@/types/database';
 
 interface AuthContextType {
   user: User | null;
   session: Session | null;
   role: AppRole | null;
+  isSystemAdmin: boolean;
   isAdmin: boolean;
+  isSupervisor: boolean;
+  isEmployee: boolean;
+  hasRole: (requiredRole: AppRole) => boolean;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signUp: (email: string, password: string, fullName: string) => Promise<{ error: Error | null }>;
@@ -105,13 +109,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await supabase.auth.signOut();
   };
 
+  const hasRoleCheck = (requiredRole: AppRole): boolean => {
+    return hasRoleOrHigher(role, requiredRole);
+  };
+
   return (
     <AuthContext.Provider
       value={{
         user,
         session,
         role,
-        isAdmin: role === 'admin',
+        isSystemAdmin: role === 'system_admin',
+        isAdmin: hasRoleOrHigher(role, 'admin'),
+        isSupervisor: hasRoleOrHigher(role, 'supervisor'),
+        isEmployee: role === 'employee',
+        hasRole: hasRoleCheck,
         loading,
         signIn,
         signUp,

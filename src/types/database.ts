@@ -1,6 +1,7 @@
 export type ItemStatus = 'active' | 'expired' | 'archived';
 export type NotificationStatus = 'pending' | 'sent' | 'failed' | 'skipped';
-export type AppRole = 'admin' | 'hr_user';
+export type AppRole = 'system_admin' | 'admin' | 'supervisor' | 'employee';
+export type EscalationStatus = 'none' | 'supervisor' | 'admin';
 
 export interface Profile {
   id: string;
@@ -15,6 +16,13 @@ export interface UserRole {
   id: string;
   user_id: string;
   role: AppRole;
+  created_at: string;
+}
+
+export interface TeamMember {
+  id: string;
+  supervisor_id: string;
+  employee_id: string;
   created_at: string;
 }
 
@@ -82,6 +90,11 @@ export interface NotificationLog {
   provider_message_id: string | null;
   error_message: string | null;
   created_at: string;
+  seen_at: string | null;
+  seen_by_user_id: string | null;
+  escalated_to_supervisor_at: string | null;
+  escalated_to_admin_at: string | null;
+  escalation_status: EscalationStatus;
   item?: Item;
   recipient?: Recipient;
 }
@@ -92,4 +105,56 @@ export interface Setting {
   value: any;
   created_at: string;
   updated_at: string;
+}
+
+export interface Integration {
+  id: string;
+  key: string;
+  name: string;
+  config: Record<string, any>;
+  is_active: boolean;
+  last_tested_at: string | null;
+  test_result: Record<string, any> | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SecuritySettings {
+  id: string;
+  session_timeout_minutes: number;
+  password_min_length: number;
+  require_2fa: boolean;
+  max_login_attempts: number;
+  lockout_duration_minutes: number;
+  updated_at: string;
+  updated_by: string | null;
+}
+
+export interface LoginHistory {
+  id: string;
+  user_id: string;
+  logged_in_at: string;
+  ip_address: string | null;
+  user_agent: string | null;
+  success: boolean;
+}
+
+// Role hierarchy helpers
+export const ROLE_HIERARCHY: Record<AppRole, number> = {
+  system_admin: 4,
+  admin: 3,
+  supervisor: 2,
+  employee: 1,
+};
+
+export const ROLE_LABELS: Record<AppRole, string> = {
+  system_admin: 'مدير النظام',
+  admin: 'المدير',
+  supervisor: 'المشرف',
+  employee: 'الموظف',
+};
+
+export function hasRoleOrHigher(userRole: AppRole | null, requiredRole: AppRole): boolean {
+  if (!userRole) return false;
+  return ROLE_HIERARCHY[userRole] >= ROLE_HIERARCHY[requiredRole];
 }
