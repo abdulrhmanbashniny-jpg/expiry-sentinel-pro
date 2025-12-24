@@ -50,3 +50,9 @@ verify_jwt = false
 
 [functions.ai-advisor]
 verify_jwt = true
+
+[functions.calculate-compliance-scores]
+verify_jwt = false
+
+[functions.generate-compliance-report]
+verify_jwt = false
