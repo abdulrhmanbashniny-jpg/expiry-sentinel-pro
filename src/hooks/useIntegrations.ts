@@ -55,7 +55,32 @@ export function useIntegrations() {
         body: { integration_key: key },
       });
       
-      if (error) throw error;
+      // Handle both error responses and non-success data
+      if (error) {
+        // Try to parse error message if it contains JSON
+        try {
+          const errorData = JSON.parse(error.message);
+          if (errorData.message) {
+            throw new Error(errorData.message);
+          }
+        } catch {
+          throw error;
+        }
+      }
+      
+      // Even if no error, check if response indicates failure
+      if (data && !data.success) {
+        // Update the test result before throwing
+        await supabase
+          .from('integrations')
+          .update({
+            last_tested_at: new Date().toISOString(),
+            test_result: data,
+          })
+          .eq('key', key);
+        
+        throw new Error(data.message || 'فشل الاختبار');
+      }
       
       // Update the test result in the database
       await supabase
