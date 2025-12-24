@@ -35,3 +35,12 @@ verify_jwt = false
 
 [functions.get-recipient-telegram]
 verify_jwt = false
+
+[functions.test-integration]
+verify_jwt = false
+
+[functions.send-whatsapp]
+verify_jwt = false
+
+[functions.appslink-webhook]
+verify_jwt = false

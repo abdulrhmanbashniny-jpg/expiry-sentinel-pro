@@ -3,11 +3,20 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.89.0";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-internal-key',
 };
 
-// Authentication helper
+// Authentication helper (supports both internal key and JWT)
 async function verifyAuth(req: Request) {
+  // 1) مفتاح داخلي للاستدعاءات من n8n
+  const internalKey = req.headers.get('x-internal-key');
+  const expectedKey = Deno.env.get('INTERNAL_FUNCTION_KEY');
+  
+  if (internalKey && expectedKey && internalKey === expectedKey) {
+    return { user: { id: 'internal-system' }, error: null };
+  }
+
+  // 2) JWT من Supabase Auth
   const authHeader = req.headers.get('Authorization');
   if (!authHeader) {
     return { user: null, error: 'Missing authorization header' };

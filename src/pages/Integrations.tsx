@@ -156,36 +156,84 @@ export default function Integrations() {
 
   const renderWhatsAppConfig = (integration: Integration) => {
     const config = getConfig(integration);
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
+    const webhookUrl = `${supabaseUrl}/functions/v1/appslink-webhook`;
+    
     return (
       <div className="space-y-4">
+        <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 dark:border-blue-900 dark:bg-blue-950">
+          <p className="text-xs text-blue-700 dark:text-blue-300">
+            <strong>منصة AppsLink:</strong> يتم استخدام AppsLink.io كمزود WhatsApp Business API
+          </p>
+        </div>
+        
         <div className="space-y-2">
           <Label htmlFor="whatsapp-url">API Base URL</Label>
           <Input
             id="whatsapp-url"
-            placeholder="https://graph.facebook.com/v18.0"
+            placeholder="https://app.appslink.io/api/v1"
             value={config.api_base_url || ''}
             onChange={(e) => handleConfigChange('whatsapp', 'api_base_url', e.target.value)}
             dir="ltr"
           />
+          <p className="text-xs text-muted-foreground">
+            الرابط الأساسي لـ AppsLink API
+          </p>
         </div>
         <div className="space-y-2">
-          <Label htmlFor="whatsapp-token">Access Token</Label>
+          <Label htmlFor="whatsapp-token">API Key / Access Token</Label>
           <Input
             id="whatsapp-token"
             type="password"
-            placeholder="WhatsApp Business API Token"
+            placeholder="AppsLink API Key"
             value={config.access_token || ''}
             onChange={(e) => handleConfigChange('whatsapp', 'access_token', e.target.value)}
             dir="ltr"
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="whatsapp-phone">Phone Number ID</Label>
+          <Label htmlFor="whatsapp-phone">Sender ID / Phone Number</Label>
           <Input
             id="whatsapp-phone"
-            placeholder="123456789012345"
+            placeholder="966512345678"
             value={config.phone_number_id || ''}
             onChange={(e) => handleConfigChange('whatsapp', 'phone_number_id', e.target.value)}
+            dir="ltr"
+          />
+        </div>
+        
+        <div className="space-y-2">
+          <Label>Webhook URL (ضعه في إعدادات AppsLink)</Label>
+          <div className="flex gap-2">
+            <Input
+              value={webhookUrl}
+              readOnly
+              dir="ltr"
+              className="bg-muted font-mono text-xs"
+            />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                navigator.clipboard.writeText(webhookUrl);
+              }}
+            >
+              نسخ
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            استخدم هذا الرابط في إعدادات AppsLink لاستقبال تحديثات الرسائل
+          </p>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="whatsapp-webhook-secret">Webhook Secret (اختياري)</Label>
+          <Input
+            id="whatsapp-webhook-secret"
+            type="password"
+            placeholder="سر للتحقق من الـ Webhook"
+            value={config.webhook_secret || ''}
+            onChange={(e) => handleConfigChange('whatsapp', 'webhook_secret', e.target.value)}
             dir="ltr"
           />
         </div>
