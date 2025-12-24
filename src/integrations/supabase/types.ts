@@ -71,6 +71,42 @@ export type Database = {
         }
         Relationships: []
       }
+      integrations: {
+        Row: {
+          config: Json
+          created_at: string
+          id: string
+          is_active: boolean
+          key: string
+          last_tested_at: string | null
+          name: string
+          test_result: Json | null
+          updated_at: string
+        }
+        Insert: {
+          config?: Json
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          key: string
+          last_tested_at?: string | null
+          name: string
+          test_result?: Json | null
+          updated_at?: string
+        }
+        Update: {
+          config?: Json
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          key?: string
+          last_tested_at?: string | null
+          name?: string
+          test_result?: Json | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       item_recipients: {
         Row: {
           created_at: string
@@ -176,40 +212,82 @@ export type Database = {
           },
         ]
       }
+      login_history: {
+        Row: {
+          id: string
+          ip_address: string | null
+          logged_in_at: string
+          success: boolean
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          ip_address?: string | null
+          logged_in_at?: string
+          success?: boolean
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          id?: string
+          ip_address?: string | null
+          logged_in_at?: string
+          success?: boolean
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       notification_log: {
         Row: {
           created_at: string
           error_message: string | null
+          escalated_to_admin_at: string | null
+          escalated_to_supervisor_at: string | null
+          escalation_status: string | null
           id: string
           item_id: string
           provider_message_id: string | null
           recipient_id: string
           reminder_day: number
           scheduled_for: string
+          seen_at: string | null
+          seen_by_user_id: string | null
           sent_at: string | null
           status: Database["public"]["Enums"]["notification_status"]
         }
         Insert: {
           created_at?: string
           error_message?: string | null
+          escalated_to_admin_at?: string | null
+          escalated_to_supervisor_at?: string | null
+          escalation_status?: string | null
           id?: string
           item_id: string
           provider_message_id?: string | null
           recipient_id: string
           reminder_day: number
           scheduled_for: string
+          seen_at?: string | null
+          seen_by_user_id?: string | null
           sent_at?: string | null
           status?: Database["public"]["Enums"]["notification_status"]
         }
         Update: {
           created_at?: string
           error_message?: string | null
+          escalated_to_admin_at?: string | null
+          escalated_to_supervisor_at?: string | null
+          escalation_status?: string | null
           id?: string
           item_id?: string
           provider_message_id?: string | null
           recipient_id?: string
           reminder_day?: number
           scheduled_for?: string
+          seen_at?: string | null
+          seen_by_user_id?: string | null
           sent_at?: string | null
           status?: Database["public"]["Enums"]["notification_status"]
         }
@@ -305,6 +383,39 @@ export type Database = {
           id?: string
           is_active?: boolean
           name?: string
+        }
+        Relationships: []
+      }
+      security_settings: {
+        Row: {
+          id: string
+          lockout_duration_minutes: number
+          max_login_attempts: number
+          password_min_length: number
+          require_2fa: boolean
+          session_timeout_minutes: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          id?: string
+          lockout_duration_minutes?: number
+          max_login_attempts?: number
+          password_min_length?: number
+          require_2fa?: boolean
+          session_timeout_minutes?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          id?: string
+          lockout_duration_minutes?: number
+          max_login_attempts?: number
+          password_min_length?: number
+          require_2fa?: boolean
+          session_timeout_minutes?: number
+          updated_at?: string
+          updated_by?: string | null
         }
         Relationships: []
       }

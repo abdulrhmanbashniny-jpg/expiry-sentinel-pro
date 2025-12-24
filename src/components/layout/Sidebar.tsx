@@ -10,34 +10,51 @@ import {
   Link2,
   LogOut,
   ChevronLeft,
+  Shield,
+  UsersRound,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { ROLE_LABELS, AppRole } from '@/types/database';
 
 interface SidebarProps {
   isCollapsed: boolean;
   onToggle: () => void;
 }
 
-const navItems = [
+interface NavItem {
+  to: string;
+  icon: React.ElementType;
+  label: string;
+  minRole?: AppRole;
+}
+
+const navItems: NavItem[] = [
   { to: '/', icon: LayoutDashboard, label: 'لوحة التحكم' },
   { to: '/items', icon: FileText, label: 'العناصر' },
-  { to: '/recipients', icon: Users, label: 'المستلمون' },
-  { to: '/categories', icon: FolderOpen, label: 'الفئات' },
-  { to: '/reminder-rules', icon: Bell, label: 'قواعد التذكير' },
-  { to: '/settings', icon: Settings, label: 'الإعدادات' },
-  { to: '/integration', icon: Link2, label: 'التكامل' },
+  { to: '/recipients', icon: Users, label: 'المستلمون', minRole: 'supervisor' },
+  { to: '/categories', icon: FolderOpen, label: 'الفئات', minRole: 'admin' },
+  { to: '/reminder-rules', icon: Bell, label: 'قواعد التذكير', minRole: 'admin' },
+  { to: '/team', icon: UsersRound, label: 'إدارة الفريق', minRole: 'system_admin' },
+  { to: '/integrations', icon: Link2, label: 'التكاملات', minRole: 'system_admin' },
+  { to: '/security', icon: Shield, label: 'الأمان', minRole: 'system_admin' },
+  { to: '/settings', icon: Settings, label: 'الإعدادات', minRole: 'admin' },
 ];
 
 export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
-  const { signOut, user, isAdmin } = useAuth();
+  const { signOut, user, role, hasRole } = useAuth();
   const navigate = useNavigate();
 
   const handleSignOut = async () => {
     await signOut();
     navigate('/auth');
   };
+
+  const filteredNavItems = navItems.filter(item => {
+    if (!item.minRole) return true;
+    return hasRole(item.minRole);
+  });
 
   return (
     <aside
@@ -73,7 +90,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
 
       {/* Navigation */}
       <nav className="flex-1 space-y-1 overflow-y-auto p-3">
-        {navItems.map((item) => (
+        {filteredNavItems.map((item) => (
           <NavLink
             key={item.to}
             to={item.to}
@@ -99,7 +116,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
               {user?.email}
             </p>
             <p className="text-xs text-sidebar-foreground/60">
-              {isAdmin ? 'مدير النظام' : 'مستخدم HR'}
+              {role ? ROLE_LABELS[role] : 'جاري التحميل...'}
             </p>
           </div>
         )}
