@@ -12,6 +12,7 @@ import {
   ChevronLeft,
   Shield,
   UsersRound,
+  Bot,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -36,6 +37,7 @@ const navItems: NavItem[] = [
   { to: '/recipients', icon: Users, label: 'المستلمون', minRole: 'supervisor' },
   { to: '/categories', icon: FolderOpen, label: 'الفئات', minRole: 'admin' },
   { to: '/reminder-rules', icon: Bell, label: 'قواعد التذكير', minRole: 'admin' },
+  { to: '/ai-advisor', icon: Bot, label: 'مستشار الامتثال', minRole: 'admin' },
   { to: '/team-management', icon: UsersRound, label: 'إدارة الفريق', minRole: 'system_admin' },
   { to: '/integrations', icon: Link2, label: 'التكاملات', minRole: 'system_admin' },
   { to: '/security', icon: Shield, label: 'الأمان', minRole: 'system_admin' },
