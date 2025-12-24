@@ -6,14 +6,28 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-internal-key',
 };
 
-// Authentication helper
+// Authentication helper - يقرأ المفتاح الداخلي من قاعدة البيانات
 async function verifyAuth(req: Request) {
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+  const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+  const adminClient = createClient(supabaseUrl, supabaseServiceKey);
+
   // 1) مفتاح داخلي للاستدعاءات الخلفية
   const internalKey = req.headers.get('x-internal-key');
-  const expectedKey = Deno.env.get('INTERNAL_FUNCTION_KEY');
-  
-  if (internalKey && expectedKey && internalKey === expectedKey) {
-    return { user: { id: 'internal-system' }, error: null };
+
+  if (internalKey) {
+    // قراءة المفتاح المتوقع من جدول integrations
+    const { data: n8nIntegration } = await adminClient
+      .from('integrations')
+      .select('config')
+      .eq('key', 'n8n')
+      .single();
+
+    const expectedKey = (n8nIntegration?.config as Record<string, any>)?.internal_key;
+
+    if (expectedKey && internalKey === expectedKey) {
+      return { user: { id: 'internal-system' }, error: null };
+    }
   }
 
   // 2) JWT من Supabase Auth
@@ -22,7 +36,6 @@ async function verifyAuth(req: Request) {
     return { user: null, error: 'Missing authorization header' };
   }
 
-  const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
   const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
   const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     global: { headers: { Authorization: authHeader } }
@@ -386,18 +399,14 @@ async function testN8n(config: Record<string, any>): Promise<{ success: boolean;
     });
 
     if (response.ok) {
-      // Verify internal key matches our secret
-      const expectedKey = Deno.env.get('INTERNAL_FUNCTION_KEY');
-      const keyMatch = internalKey === expectedKey;
-      
+      // المفتاح الداخلي موجود في config ومحفوظ في قاعدة البيانات
+      // لا حاجة للتحقق مع .env - المفتاح الذي أدخله المستخدم هو المفتاح المعتمد
       return { 
         success: true, 
-        message: keyMatch 
-          ? 'تم الاتصال بـ n8n بنجاح والمفتاح الداخلي صحيح!'
-          : 'تم الاتصال بـ n8n لكن المفتاح الداخلي غير مطابق',
+        message: 'تم الاتصال بـ n8n بنجاح! المفتاح الداخلي سيُستخدم من إعدادات التكامل.',
         details: { 
           n8n_reachable: true,
-          internal_key_valid: keyMatch
+          internal_key_configured: !!internalKey
         }
       };
     }
