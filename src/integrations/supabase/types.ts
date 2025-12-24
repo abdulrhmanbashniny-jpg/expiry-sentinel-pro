@@ -194,6 +194,39 @@ export type Database = {
         }
         Relationships: []
       }
+      departments: {
+        Row: {
+          code: string | null
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          manager_user_id: string | null
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          code?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          manager_user_id?: string | null
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          code?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          manager_user_id?: string | null
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       integrations: {
         Row: {
           config: Json
@@ -266,57 +299,113 @@ export type Database = {
           },
         ]
       }
+      item_status_log: {
+        Row: {
+          changed_at: string
+          changed_by_user_id: string | null
+          channel: string | null
+          id: string
+          item_id: string
+          metadata: Json | null
+          new_status: string
+          old_status: string | null
+          reason: string | null
+        }
+        Insert: {
+          changed_at?: string
+          changed_by_user_id?: string | null
+          channel?: string | null
+          id?: string
+          item_id: string
+          metadata?: Json | null
+          new_status: string
+          old_status?: string | null
+          reason?: string | null
+        }
+        Update: {
+          changed_at?: string
+          changed_by_user_id?: string | null
+          channel?: string | null
+          id?: string
+          item_id?: string
+          metadata?: Json | null
+          new_status?: string
+          old_status?: string | null
+          reason?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "item_status_log_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       items: {
         Row: {
           attachment_url: string | null
           category_id: string | null
           created_at: string
           created_by_user_id: string | null
+          department_id: string | null
           expiry_date: string
           expiry_time: string | null
           id: string
+          is_recurring: boolean
           notes: string | null
           owner_department: string | null
+          parent_item_id: string | null
           ref_number: string | null
           reminder_rule_id: string | null
           responsible_person: string | null
           status: Database["public"]["Enums"]["item_status"]
           title: string
           updated_at: string
+          workflow_status: Database["public"]["Enums"]["item_workflow_status"]
         }
         Insert: {
           attachment_url?: string | null
           category_id?: string | null
           created_at?: string
           created_by_user_id?: string | null
+          department_id?: string | null
           expiry_date: string
           expiry_time?: string | null
           id?: string
+          is_recurring?: boolean
           notes?: string | null
           owner_department?: string | null
+          parent_item_id?: string | null
           ref_number?: string | null
           reminder_rule_id?: string | null
           responsible_person?: string | null
           status?: Database["public"]["Enums"]["item_status"]
           title: string
           updated_at?: string
+          workflow_status?: Database["public"]["Enums"]["item_workflow_status"]
         }
         Update: {
           attachment_url?: string | null
           category_id?: string | null
           created_at?: string
           created_by_user_id?: string | null
+          department_id?: string | null
           expiry_date?: string
           expiry_time?: string | null
           id?: string
+          is_recurring?: boolean
           notes?: string | null
           owner_department?: string | null
+          parent_item_id?: string | null
           ref_number?: string | null
           reminder_rule_id?: string | null
           responsible_person?: string | null
           status?: Database["public"]["Enums"]["item_status"]
           title?: string
           updated_at?: string
+          workflow_status?: Database["public"]["Enums"]["item_workflow_status"]
         }
         Relationships: [
           {
@@ -324,6 +413,20 @@ export type Database = {
             columns: ["category_id"]
             isOneToOne: false
             referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "items_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "items_parent_item_id_fkey"
+            columns: ["parent_item_id"]
+            isOneToOne: false
+            referencedRelation: "items"
             referencedColumns: ["id"]
           },
           {
@@ -593,6 +696,41 @@ export type Database = {
         }
         Relationships: []
       }
+      user_department_scopes: {
+        Row: {
+          can_cross_view_only: boolean
+          created_at: string
+          department_id: string
+          id: string
+          scope_type: string
+          user_id: string
+        }
+        Insert: {
+          can_cross_view_only?: boolean
+          created_at?: string
+          department_id: string
+          id?: string
+          scope_type?: string
+          user_id: string
+        }
+        Update: {
+          can_cross_view_only?: boolean
+          created_at?: string
+          department_id?: string
+          id?: string
+          scope_type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_department_scopes_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -619,10 +757,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      can_view_department: {
+        Args: { _department_id: string; _user_id: string }
+        Returns: boolean
+      }
       get_team_member_ids: {
         Args: { _supervisor_id: string }
         Returns: string[]
       }
+      get_user_department_ids: { Args: { _user_id: string }; Returns: string[] }
       get_user_role: {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
@@ -636,6 +779,10 @@ export type Database = {
       }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
       is_admin_or_higher: { Args: { _user_id: string }; Returns: boolean }
+      is_department_manager: {
+        Args: { _department_id: string; _user_id: string }
+        Returns: boolean
+      }
       is_supervisor_of: {
         Args: { _employee_id: string; _supervisor_id: string }
         Returns: boolean
@@ -646,6 +793,14 @@ export type Database = {
     Enums: {
       app_role: "admin" | "hr_user" | "system_admin" | "supervisor" | "employee"
       item_status: "active" | "expired" | "archived"
+      item_workflow_status:
+        | "new"
+        | "acknowledged"
+        | "in_progress"
+        | "done_pending_supervisor"
+        | "returned"
+        | "escalated_to_manager"
+        | "finished"
       notification_status: "pending" | "sent" | "failed" | "skipped"
     }
     CompositeTypes: {
@@ -776,6 +931,15 @@ export const Constants = {
     Enums: {
       app_role: ["admin", "hr_user", "system_admin", "supervisor", "employee"],
       item_status: ["active", "expired", "archived"],
+      item_workflow_status: [
+        "new",
+        "acknowledged",
+        "in_progress",
+        "done_pending_supervisor",
+        "returned",
+        "escalated_to_manager",
+        "finished",
+      ],
       notification_status: ["pending", "sent", "failed", "skipped"],
     },
   },
