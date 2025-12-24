@@ -3,17 +3,40 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.89.0";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-internal-key',
 };
 
-// Authentication helper
+// Authentication helper - يقرأ المفتاح الداخلي من قاعدة البيانات
 async function verifyAuth(req: Request) {
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+  const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+  const adminClient = createClient(supabaseUrl, supabaseServiceKey);
+
+  // 1) أولاً: مفتاح داخلي للاستدعاءات الخلفية (مثلاً من n8n)
+  const internalKey = req.headers.get('x-internal-key');
+
+  if (internalKey) {
+    // قراءة المفتاح المتوقع من جدول integrations
+    const { data: n8nIntegration } = await adminClient
+      .from('integrations')
+      .select('config')
+      .eq('key', 'n8n')
+      .single();
+
+    const expectedKey = (n8nIntegration?.config as Record<string, any>)?.internal_key;
+
+    if (expectedKey && internalKey === expectedKey) {
+      // نرجع مستخدم وهمي يمثل النظام الداخلي
+      return { user: { id: 'internal-system' }, error: null };
+    }
+  }
+
+  // 2) إن لم يوجد مفتاح داخلي، نرجع للطريقة العادية (JWT من Supabase Auth)
   const authHeader = req.headers.get('Authorization');
   if (!authHeader) {
     return { user: null, error: 'Missing authorization header' };
   }
 
-  const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
   const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
   const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     global: { headers: { Authorization: authHeader } }
@@ -63,6 +86,8 @@ serve(async (req) => {
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    console.log('Preparing message for item:', item_id, 'recipient:', recipient_id, 'by:', user.id);
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
