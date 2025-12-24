@@ -225,47 +225,126 @@ async function testWhatsApp(config: Record<string, any>): Promise<{ success: boo
     };
   }
 
+  // Validate URL format
+  const cleanBaseUrl = apiBaseUrl.replace(/\/$/, '');
+  if (!cleanBaseUrl.startsWith('http://') && !cleanBaseUrl.startsWith('https://')) {
+    return {
+      success: false,
+      message: 'API Base URL يجب أن يبدأ بـ http:// أو https://',
+      details: { invalid: 'api_base_url format' }
+    };
+  }
+
   try {
-    // Try to check API status or send a test (depends on AppsLink API)
-    // For AppsLink, we'll try a simple ping or status endpoint
-    const statusUrl = `${apiBaseUrl.replace(/\/$/, '')}/status`;
-    
-    const response = await fetch(statusUrl, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-      },
-    });
+    console.log('Testing WhatsApp/AppsLink connection:', { apiBaseUrl: cleanBaseUrl, hasToken: !!accessToken });
 
-    if (response.ok) {
-      const data = await response.json();
-      return { 
-        success: true, 
-        message: 'تم الاتصال بـ AppsLink بنجاح!',
-        details: data
-      };
+    // Try multiple possible endpoints that AppsLink might have
+    const possibleEndpoints = [
+      '/instance/info',
+      '/instance/status', 
+      '/account/info',
+      '/me',
+      '/check'
+    ];
+
+    let lastResponse: Response | null = null;
+    let lastError: string | null = null;
+
+    for (const endpoint of possibleEndpoints) {
+      try {
+        const testUrl = `${cleanBaseUrl}${endpoint}`;
+        console.log(`Trying endpoint: ${testUrl}`);
+
+        const response = await fetch(testUrl, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'x-api-key': accessToken, // Some APIs use this header instead
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+          },
+        });
+
+        lastResponse = response;
+        const contentType = response.headers.get('content-type') || '';
+
+        // Check if response is HTML (wrong endpoint)
+        if (contentType.includes('text/html')) {
+          console.log(`Endpoint ${endpoint} returned HTML, skipping...`);
+          continue;
+        }
+
+        // Try to parse as JSON
+        const responseText = await response.text();
+        
+        // Check if it looks like HTML
+        if (responseText.trim().startsWith('<!') || responseText.trim().startsWith('<html')) {
+          console.log(`Endpoint ${endpoint} returned HTML content, skipping...`);
+          continue;
+        }
+
+        // Try to parse as JSON
+        try {
+          const data = JSON.parse(responseText);
+          
+          if (response.ok) {
+            return { 
+              success: true, 
+              message: 'تم الاتصال بـ AppsLink بنجاح!',
+              details: { endpoint, data }
+            };
+          } else if (response.status === 401 || response.status === 403) {
+            return {
+              success: false,
+              message: 'Access Token غير صالح أو منتهي الصلاحية',
+              details: { status: response.status, error: data }
+            };
+          }
+        } catch {
+          // Not valid JSON
+          lastError = responseText.substring(0, 100);
+          continue;
+        }
+      } catch (endpointError) {
+        console.log(`Error testing endpoint ${endpoint}:`, endpointError);
+        continue;
+      }
     }
 
-    // If status endpoint doesn't exist, try to verify token differently
-    if (response.status === 404) {
-      // Try a different approach - check if we can reach the API
-      return { 
-        success: true, 
-        message: 'تم التحقق من الاتصال. يرجى اختبار الإرسال الفعلي.',
-        details: { note: 'API reachable, full test requires sending a message' }
-      };
+    // If no endpoint worked, verify the base URL is reachable
+    try {
+      const baseResponse = await fetch(cleanBaseUrl, {
+        method: 'HEAD',
+        headers: { 'Accept': 'application/json' },
+      });
+
+      if (baseResponse.ok || baseResponse.status < 500) {
+        return { 
+          success: true, 
+          message: 'API يمكن الوصول إليه. تأكد من صحة الـ Base URL وجرب الإرسال الفعلي.',
+          details: { 
+            note: 'لم يتم العثور على endpoint للتحقق، لكن الـ API قابل للوصول',
+            suggestion: 'تأكد أن Base URL ينتهي بـ /api/v1 أو المسار الصحيح حسب توثيق AppsLink'
+          }
+        };
+      }
+    } catch {
+      // Base URL not reachable
     }
 
-    const errorData = await response.text();
     return { 
       success: false, 
-      message: `فشل الاتصال: ${response.status} - ${errorData.substring(0, 100)}`,
-      details: { status: response.status }
+      message: 'لم يتم العثور على API صالح. تأكد من صحة Base URL (مثال: https://app.appslink.io/api/v1)',
+      details: { 
+        tried_endpoints: possibleEndpoints,
+        last_error: lastError,
+        suggestion: 'تحقق من توثيق AppsLink للحصول على المسار الصحيح للـ API'
+      }
     };
 
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error('WhatsApp test error:', error);
     return { 
       success: false, 
       message: `خطأ في الاتصال: ${errorMessage}`,
