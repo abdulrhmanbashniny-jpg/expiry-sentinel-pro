@@ -332,6 +332,27 @@ export type Database = {
         }
         Relationships: []
       }
+      team_members: {
+        Row: {
+          created_at: string
+          employee_id: string
+          id: string
+          supervisor_id: string
+        }
+        Insert: {
+          created_at?: string
+          employee_id: string
+          id?: string
+          supervisor_id: string
+        }
+        Update: {
+          created_at?: string
+          employee_id?: string
+          id?: string
+          supervisor_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -358,6 +379,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_team_member_ids: {
+        Args: { _supervisor_id: string }
+        Returns: string[]
+      }
+      get_user_role: {
+        Args: { _user_id: string }
+        Returns: Database["public"]["Enums"]["app_role"]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -366,6 +395,13 @@ export type Database = {
         Returns: boolean
       }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
+      is_admin_or_higher: { Args: { _user_id: string }; Returns: boolean }
+      is_supervisor_of: {
+        Args: { _employee_id: string; _supervisor_id: string }
+        Returns: boolean
+      }
+      is_supervisor_or_higher: { Args: { _user_id: string }; Returns: boolean }
+      is_system_admin: { Args: { _user_id: string }; Returns: boolean }
     }
     Enums: {
       app_role: "admin" | "hr_user" | "system_admin" | "supervisor" | "employee"
