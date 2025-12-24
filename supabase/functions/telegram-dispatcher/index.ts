@@ -339,31 +339,37 @@ serve(async (req) => {
     const body = await req.json();
     console.log('Received request body:', JSON.stringify(body));
     
-    // Verify internal key
+    // Verify internal key (n8n -> telegram-dispatcher)
+    // مصدر الحقيقة هو قاعدة البيانات (integrations.config.internal_key)،
+    // لكننا نقبل أيضاً قيمة البيئة INTERNAL_FUNCTION_KEY للتوافق.
     const internalKey = req.headers.get('x-internal-key');
-    const expectedKey = Deno.env.get('INTERNAL_FUNCTION_KEY');
-    
-    // Also check from integrations table as fallback
-    if (!expectedKey) {
-      const { data: integration } = await supabase
-        .from('integrations')
-        .select('config')
-        .eq('key', 'n8n')
-        .single();
-      
-      const integrationKey = integration?.config?.internal_key;
-      if (!internalKey || internalKey !== integrationKey) {
-        console.error('Auth failed - no matching key');
-        return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-          status: 401,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
-      }
-    } else if (internalKey !== expectedKey) {
+
+    const expectedEnvKey = Deno.env.get('INTERNAL_FUNCTION_KEY') || undefined;
+
+    const { data: integration, error: integrationError } = await supabase
+      .from('integrations')
+      .select('config')
+      .eq('key', 'n8n')
+      .maybeSingle();
+
+    if (integrationError) {
+      console.error('Auth check failed - cannot read integrations config:', integrationError);
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const cfg = (integration?.config as Record<string, any> | null) ?? null;
+    const expectedDbKey = (cfg?.internal_key as string | undefined) || (cfg?.internalkey as string | undefined);
+
+    const allowedKeys = new Set([expectedEnvKey, expectedDbKey].filter(Boolean) as string[]);
+
+    if (!internalKey || allowedKeys.size === 0 || !allowedKeys.has(internalKey)) {
       console.error('Auth failed - key mismatch');
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
     
