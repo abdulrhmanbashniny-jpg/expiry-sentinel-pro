@@ -1,15 +1,17 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Search, FileText, Trash2, Edit, Archive, Send } from 'lucide-react';
+import { Plus, Search, FileText, Trash2, Edit, Archive } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useItems } from '@/hooks/useItems';
 import { useCategories } from '@/hooks/useCategories';
 import { format } from 'date-fns';
 import { ItemStatus } from '@/types/database';
+import { WorkflowStatus, WORKFLOW_STATUS_LABELS } from '@/hooks/useDashboardData';
 import TestWhatsAppDialog from '@/components/TestWhatsAppDialog';
 import SendTelegramDialog from '@/components/SendTelegramDialog';
 
@@ -20,10 +22,21 @@ const Items: React.FC = () => {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  const [workflowFilter, setWorkflowFilter] = useState<string>('active');
 
-  const filteredItems = items.filter((item) => {
+  // Filter items based on workflow tab
+  const getFilteredByWorkflow = () => {
+    if (workflowFilter === 'finished') {
+      return items.filter(item => (item as any).workflow_status === 'finished');
+    }
+    // Active = all except finished
+    return items.filter(item => (item as any).workflow_status !== 'finished');
+  };
+
+  const filteredItems = getFilteredByWorkflow().filter((item) => {
     const matchesSearch = item.title.toLowerCase().includes(search.toLowerCase()) ||
-      item.responsible_person?.toLowerCase().includes(search.toLowerCase());
+      item.responsible_person?.toLowerCase().includes(search.toLowerCase()) ||
+      item.ref_number?.toLowerCase().includes(search.toLowerCase());
     const matchesStatus = statusFilter === 'all' || item.status === statusFilter;
     const matchesCategory = categoryFilter === 'all' || item.category_id === categoryFilter;
     return matchesSearch && matchesStatus && matchesCategory;
@@ -38,6 +51,24 @@ const Items: React.FC = () => {
     return <Badge className="bg-success text-success-foreground">نشط</Badge>;
   };
 
+  const getWorkflowBadge = (status: string) => {
+    const workflowStatus = status as WorkflowStatus;
+    const label = WORKFLOW_STATUS_LABELS[workflowStatus] || status;
+    const colors: Record<WorkflowStatus, string> = {
+      new: 'bg-muted text-muted-foreground',
+      acknowledged: 'bg-primary/15 text-primary',
+      in_progress: 'bg-warning/15 text-warning',
+      done_pending_supervisor: 'bg-accent/15 text-accent',
+      returned: 'bg-destructive/15 text-destructive',
+      escalated_to_manager: 'bg-destructive/20 text-destructive',
+      finished: 'bg-success/15 text-success',
+    };
+    return <Badge className={`text-xs ${colors[workflowStatus] || ''}`}>{label}</Badge>;
+  };
+
+  const activeCount = items.filter(i => (i as any).workflow_status !== 'finished').length;
+  const finishedCount = items.filter(i => (i as any).workflow_status === 'finished').length;
+
   return (
     <div className="animate-fade-in space-y-6">
       <div className="flex items-center justify-between">
@@ -51,13 +82,27 @@ const Items: React.FC = () => {
         </Button>
       </div>
 
+      {/* Workflow Tabs */}
+      <Tabs value={workflowFilter} onValueChange={setWorkflowFilter} className="w-full">
+        <TabsList className="grid w-full max-w-md grid-cols-2">
+          <TabsTrigger value="active" className="gap-2">
+            النشطة
+            <Badge variant="secondary" className="mr-1">{activeCount}</Badge>
+          </TabsTrigger>
+          <TabsTrigger value="finished" className="gap-2">
+            المنتهية
+            <Badge variant="secondary" className="mr-1">{finishedCount}</Badge>
+          </TabsTrigger>
+        </TabsList>
+      </Tabs>
+
       {/* Filters */}
       <Card>
         <CardContent className="flex flex-wrap gap-4 p-4">
           <div className="relative flex-1 min-w-[200px]">
             <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
-              placeholder="بحث بالعنوان أو المسؤول..."
+              placeholder="بحث بالعنوان أو المسؤول أو الرقم..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="pr-10"
@@ -97,13 +142,22 @@ const Items: React.FC = () => {
             <div className="flex flex-col items-center gap-4 p-12 text-center">
               <FileText className="h-12 w-12 text-muted-foreground" />
               <div>
-                <p className="font-medium">لا توجد عناصر</p>
-                <p className="text-sm text-muted-foreground">ابدأ بإضافة عنصر جديد</p>
+                <p className="font-medium">
+                  {workflowFilter === 'finished' ? 'لا توجد معاملات منتهية' : 'لا توجد عناصر'}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  {workflowFilter === 'finished' 
+                    ? 'المعاملات المنتهية ستظهر هنا'
+                    : 'ابدأ بإضافة عنصر جديد'
+                  }
+                </p>
               </div>
-              <Button onClick={() => navigate('/items/new')}>
-                <Plus className="ml-2 h-4 w-4" />
-                إضافة عنصر
-              </Button>
+              {workflowFilter !== 'finished' && (
+                <Button onClick={() => navigate('/items/new')}>
+                  <Plus className="ml-2 h-4 w-4" />
+                  إضافة عنصر
+                </Button>
+              )}
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -113,9 +167,10 @@ const Items: React.FC = () => {
                     <th>الرقم التسلسلي</th>
                     <th>العنوان</th>
                     <th>الفئة</th>
+                    <th>حالة العمل</th>
                     <th>تاريخ الانتهاء</th>
                     <th>المسؤول</th>
-                    <th>الحالة</th>
+                    <th>حالة الصلاحية</th>
                     <th>الإجراءات</th>
                   </tr>
                 </thead>
@@ -125,6 +180,7 @@ const Items: React.FC = () => {
                       <td className="font-mono text-sm text-primary">{item.ref_number || '-'}</td>
                       <td className="font-medium">{item.title}</td>
                       <td>{item.category?.name || '-'}</td>
+                      <td>{getWorkflowBadge((item as any).workflow_status || 'new')}</td>
                       <td>{format(new Date(item.expiry_date), 'dd/MM/yyyy')}</td>
                       <td>{item.responsible_person || '-'}</td>
                       <td>{getStatusBadge(item.status, item.expiry_date)}</td>
