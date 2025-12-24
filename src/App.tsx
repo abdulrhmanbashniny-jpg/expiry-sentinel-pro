@@ -63,6 +63,7 @@ const AppRoutes = () => {
         <Route path="settings" element={<Settings />} />
         <Route path="security" element={<Security />} />
         <Route path="team-management" element={<TeamManagement />} />
+        <Route path="team" element={<Navigate to="/team-management" replace />} />
         <Route path="integrations" element={<Integrations />} />
         <Route path="integration" element={<Integration />} />
       </Route>
