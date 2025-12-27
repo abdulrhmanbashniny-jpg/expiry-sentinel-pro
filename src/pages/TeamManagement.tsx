@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useTeamManagement } from '@/hooks/useTeamManagement';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Loader2, Users, UserPlus, Trash2, Shield } from 'lucide-react';
+import { Loader2, Users, UserPlus, Trash2, Shield, RefreshCw } from 'lucide-react';
 import { Helmet } from 'react-helmet';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
@@ -10,19 +10,24 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { AppRole, ROLE_LABELS } from '@/types/database';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 const ROLE_COLORS: Record<AppRole, string> = {
   system_admin: 'bg-red-500',
   admin: 'bg-orange-500',
+  hr_user: 'bg-purple-500',
   supervisor: 'bg-blue-500',
   employee: 'bg-gray-500',
 };
 
 export default function TeamManagement() {
-  const { users, teamMembers, isLoading, updateRole, addTeamMember, removeTeamMember } = useTeamManagement();
+  const { users, teamMembers, isLoading, updateRole, addTeamMember, removeTeamMember, refetch } = useTeamManagement();
+  const { toast } = useToast();
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [selectedSupervisor, setSelectedSupervisor] = useState('');
   const [selectedEmployee, setSelectedEmployee] = useState('');
+  const [isSyncing, setIsSyncing] = useState(false);
 
   const supervisors = users.filter(u => u.role === 'supervisor');
   const employees = users.filter(u => u.role === 'employee');
@@ -39,6 +44,37 @@ export default function TeamManagement() {
           },
         }
       );
+    }
+  };
+
+  const handleSyncUsers = async () => {
+    setIsSyncing(true);
+    try {
+      const { data, error } = await supabase.rpc('sync_missing_users');
+      
+      if (error) throw error;
+      
+      const result = data?.[0];
+      if (result && result.synced_count > 0) {
+        toast({
+          title: 'تمت المزامنة',
+          description: `تم مزامنة ${result.synced_count} مستخدم: ${result.synced_users?.join(', ')}`,
+        });
+        refetch();
+      } else {
+        toast({
+          title: 'لا يوجد مستخدمين',
+          description: 'جميع المستخدمين متزامنين بالفعل',
+        });
+      }
+    } catch (error: any) {
+      toast({
+        variant: 'destructive',
+        title: 'خطأ في المزامنة',
+        description: error.message,
+      });
+    } finally {
+      setIsSyncing(false);
     }
   };
 
@@ -73,14 +109,28 @@ export default function TeamManagement() {
         {/* Users and Roles */}
         <Card>
           <CardHeader>
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-                <Shield className="h-5 w-5 text-primary" />
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+                  <Shield className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                  <CardTitle>المستخدمون والأدوار</CardTitle>
+                  <CardDescription>تعيين وتعديل أدوار المستخدمين ({users.length} مستخدم)</CardDescription>
+                </div>
               </div>
-              <div>
-                <CardTitle>المستخدمون والأدوار</CardTitle>
-                <CardDescription>تعيين وتعديل أدوار المستخدمين</CardDescription>
-              </div>
+              <Button 
+                variant="outline" 
+                onClick={handleSyncUsers}
+                disabled={isSyncing}
+              >
+                {isSyncing ? (
+                  <Loader2 className="ml-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <RefreshCw className="ml-2 h-4 w-4" />
+                )}
+                مزامنة المستخدمين
+              </Button>
             </div>
           </CardHeader>
           <CardContent>
@@ -126,6 +176,7 @@ export default function TeamManagement() {
                           <SelectContent>
                             <SelectItem value="system_admin">{ROLE_LABELS.system_admin}</SelectItem>
                             <SelectItem value="admin">{ROLE_LABELS.admin}</SelectItem>
+                            <SelectItem value="hr_user">{ROLE_LABELS.hr_user}</SelectItem>
                             <SelectItem value="supervisor">{ROLE_LABELS.supervisor}</SelectItem>
                             <SelectItem value="employee">{ROLE_LABELS.employee}</SelectItem>
                           </SelectContent>

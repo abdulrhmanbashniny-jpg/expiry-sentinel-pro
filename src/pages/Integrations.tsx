@@ -101,24 +101,23 @@ export default function Integrations() {
           <Input
             id="n8n-api-key"
             type="password"
-            placeholder="n8n API Key"
-            value={config.api_key || ''}
+            placeholder={config.api_key ? '••••••••' + (config.api_key as string).slice(-4) : 'أدخل API Key'}
             onChange={(e) => handleConfigChange('n8n', 'api_key', e.target.value)}
             dir="ltr"
           />
+          <p className="text-xs text-muted-foreground">اترك فارغًا للاحتفاظ بالقيمة الحالية</p>
         </div>
         <div className="space-y-2">
           <Label htmlFor="n8n-internal-key">Internal Function Key</Label>
           <Input
             id="n8n-internal-key"
             type="password"
-            placeholder="المفتاح الداخلي لاستدعاء Edge Functions"
-            value={config.internal_key || ''}
+            placeholder={config.internal_key ? '••••••••' + (config.internal_key as string).slice(-4) : 'أدخل المفتاح الداخلي'}
             onChange={(e) => handleConfigChange('n8n', 'internal_key', e.target.value)}
             dir="ltr"
           />
           <p className="text-xs text-muted-foreground">
-            يُستخدم هذا المفتاح في هيدر x-internal-key للمصادقة بين n8n و Edge Functions
+            يُستخدم هذا المفتاح في هيدر x-internal-key للمصادقة بين n8n و Edge Functions. اترك فارغًا للاحتفاظ بالقيمة الحالية.
           </p>
         </div>
       </div>
@@ -129,16 +128,16 @@ export default function Integrations() {
     const config = getConfig(integration);
     return (
       <div className="space-y-4">
-        <div className="space-y-2">
+      <div className="space-y-2">
           <Label htmlFor="telegram-token">Bot Token</Label>
           <Input
             id="telegram-token"
             type="password"
-            placeholder="123456:ABC-DEF1234ghIkl..."
-            value={config.bot_token || ''}
+            placeholder={config.bot_token ? '••••••••' + (config.bot_token as string).slice(-4) : 'أدخل Bot Token'}
             onChange={(e) => handleConfigChange('telegram', 'bot_token', e.target.value)}
             dir="ltr"
           />
+          <p className="text-xs text-muted-foreground">اترك فارغًا للاحتفاظ بالقيمة الحالية</p>
         </div>
         <div className="space-y-2">
           <Label htmlFor="telegram-chat">Default Chat ID</Label>
@@ -185,11 +184,11 @@ export default function Integrations() {
           <Input
             id="whatsapp-token"
             type="password"
-            placeholder="AppsLink API Key"
-            value={config.access_token || ''}
+            placeholder={config.access_token ? '••••••••' + (config.access_token as string).slice(-4) : 'أدخل AppsLink API Key'}
             onChange={(e) => handleConfigChange('whatsapp', 'access_token', e.target.value)}
             dir="ltr"
           />
+          <p className="text-xs text-muted-foreground">اترك فارغًا للاحتفاظ بالقيمة الحالية</p>
         </div>
         <div className="space-y-2">
           <Label htmlFor="whatsapp-phone">Sender ID / Phone Number</Label>
@@ -231,11 +230,11 @@ export default function Integrations() {
           <Input
             id="whatsapp-webhook-secret"
             type="password"
-            placeholder="سر للتحقق من الـ Webhook"
-            value={config.webhook_secret || ''}
+            placeholder={config.webhook_secret ? '••••••••' + (config.webhook_secret as string).slice(-4) : 'أدخل سر Webhook'}
             onChange={(e) => handleConfigChange('whatsapp', 'webhook_secret', e.target.value)}
             dir="ltr"
           />
+          <p className="text-xs text-muted-foreground">اترك فارغًا للاحتفاظ بالقيمة الحالية</p>
         </div>
       </div>
     );
@@ -271,11 +270,11 @@ export default function Integrations() {
             <Input
               id="ai-api-key"
               type="password"
-              placeholder="API Key"
-              value={config.api_key || ''}
+              placeholder={config.api_key ? '••••••••' + (config.api_key as string).slice(-4) : 'أدخل API Key'}
               onChange={(e) => handleConfigChange('ai_assistant', 'api_key', e.target.value)}
               dir="ltr"
             />
+            <p className="text-xs text-muted-foreground">اترك فارغًا للاحتفاظ بالقيمة الحالية</p>
           </div>
         )}
 

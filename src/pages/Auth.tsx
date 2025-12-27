@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Bell, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { z } from 'zod';
@@ -15,9 +16,16 @@ const loginSchema = z.object({
   password: z.string().min(6, 'كلمة المرور يجب أن تكون 6 أحرف على الأقل'),
 });
 
-const signupSchema = loginSchema.extend({
-  fullName: z.string().min(2, 'الاسم يجب أن يكون حرفين على الأقل'),
+const signupSchema = z.object({
+  email: z.string().email('البريد الإلكتروني غير صحيح'),
+  password: z.string().min(6, 'كلمة المرور يجب أن تكون 6 أحرف على الأقل'),
   confirmPassword: z.string(),
+  fullName: z.string().min(2, 'الاسم يجب أن يكون حرفين على الأقل'),
+  employeeNumber: z.string().min(1, 'رقم الموظف مطلوب'),
+  nationalId: z.string().min(10, 'رقم الهوية يجب أن يكون 10 أرقام على الأقل'),
+  phone: z.string().min(10, 'رقم الجوال يجب أن يكون 10 أرقام على الأقل'),
+  allowWhatsapp: z.boolean(),
+  allowTelegram: z.boolean(),
 }).refine((data) => data.password === data.confirmPassword, {
   message: 'كلمات المرور غير متطابقة',
   path: ['confirmPassword'],
@@ -35,6 +43,11 @@ export const Auth: React.FC = () => {
     password: '',
     confirmPassword: '',
     fullName: '',
+    employeeNumber: '',
+    nationalId: '',
+    phone: '',
+    allowWhatsapp: false,
+    allowTelegram: false,
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -98,7 +111,18 @@ export const Auth: React.FC = () => {
     }
 
     setIsSubmitting(true);
-    const { error } = await signUp(signupData.email, signupData.password, signupData.fullName);
+    const { error } = await signUp(
+      signupData.email, 
+      signupData.password, 
+      signupData.fullName,
+      {
+        employee_number: signupData.employeeNumber,
+        national_id: signupData.nationalId,
+        phone: signupData.phone,
+        allow_whatsapp: signupData.allowWhatsapp,
+        allow_telegram: signupData.allowTelegram,
+      }
+    );
     setIsSubmitting(false);
 
     if (error) {
@@ -198,7 +222,7 @@ export const Auth: React.FC = () => {
               <TabsContent value="signup" className="mt-6">
                 <form onSubmit={handleSignup} className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="signup-name">الاسم الكامل</Label>
+                    <Label htmlFor="signup-name">الاسم الكامل *</Label>
                     <Input
                       id="signup-name"
                       type="text"
@@ -211,8 +235,59 @@ export const Auth: React.FC = () => {
                       <p className="text-sm text-destructive">{errors.fullName}</p>
                     )}
                   </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-2">
+                      <Label htmlFor="signup-employee-number">رقم الموظف *</Label>
+                      <Input
+                        id="signup-employee-number"
+                        type="text"
+                        placeholder="EMP001"
+                        value={signupData.employeeNumber}
+                        onChange={(e) => setSignupData({ ...signupData, employeeNumber: e.target.value })}
+                        className={errors.employeeNumber ? 'border-destructive' : ''}
+                        dir="ltr"
+                      />
+                      {errors.employeeNumber && (
+                        <p className="text-sm text-destructive">{errors.employeeNumber}</p>
+                      )}
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="signup-national-id">رقم الهوية *</Label>
+                      <Input
+                        id="signup-national-id"
+                        type="text"
+                        placeholder="1234567890"
+                        value={signupData.nationalId}
+                        onChange={(e) => setSignupData({ ...signupData, nationalId: e.target.value })}
+                        className={errors.nationalId ? 'border-destructive' : ''}
+                        dir="ltr"
+                      />
+                      {errors.nationalId && (
+                        <p className="text-sm text-destructive">{errors.nationalId}</p>
+                      )}
+                    </div>
+                  </div>
+
                   <div className="space-y-2">
-                    <Label htmlFor="signup-email">البريد الإلكتروني</Label>
+                    <Label htmlFor="signup-phone">رقم الجوال *</Label>
+                    <Input
+                      id="signup-phone"
+                      type="tel"
+                      placeholder="05xxxxxxxx"
+                      value={signupData.phone}
+                      onChange={(e) => setSignupData({ ...signupData, phone: e.target.value })}
+                      className={errors.phone ? 'border-destructive' : ''}
+                      dir="ltr"
+                    />
+                    {errors.phone && (
+                      <p className="text-sm text-destructive">{errors.phone}</p>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-email">البريد الإلكتروني *</Label>
                     <Input
                       id="signup-email"
                       type="email"
@@ -225,34 +300,69 @@ export const Auth: React.FC = () => {
                       <p className="text-sm text-destructive">{errors.email}</p>
                     )}
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="signup-password">كلمة المرور</Label>
-                    <Input
-                      id="signup-password"
-                      type="password"
-                      placeholder="••••••••"
-                      value={signupData.password}
-                      onChange={(e) => setSignupData({ ...signupData, password: e.target.value })}
-                      className={errors.password ? 'border-destructive' : ''}
-                    />
-                    {errors.password && (
-                      <p className="text-sm text-destructive">{errors.password}</p>
-                    )}
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-2">
+                      <Label htmlFor="signup-password">كلمة المرور *</Label>
+                      <Input
+                        id="signup-password"
+                        type="password"
+                        placeholder="••••••••"
+                        value={signupData.password}
+                        onChange={(e) => setSignupData({ ...signupData, password: e.target.value })}
+                        className={errors.password ? 'border-destructive' : ''}
+                      />
+                      {errors.password && (
+                        <p className="text-sm text-destructive">{errors.password}</p>
+                      )}
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="signup-confirm">تأكيد كلمة المرور *</Label>
+                      <Input
+                        id="signup-confirm"
+                        type="password"
+                        placeholder="••••••••"
+                        value={signupData.confirmPassword}
+                        onChange={(e) => setSignupData({ ...signupData, confirmPassword: e.target.value })}
+                        className={errors.confirmPassword ? 'border-destructive' : ''}
+                      />
+                      {errors.confirmPassword && (
+                        <p className="text-sm text-destructive">{errors.confirmPassword}</p>
+                      )}
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="signup-confirm">تأكيد كلمة المرور</Label>
-                    <Input
-                      id="signup-confirm"
-                      type="password"
-                      placeholder="••••••••"
-                      value={signupData.confirmPassword}
-                      onChange={(e) => setSignupData({ ...signupData, confirmPassword: e.target.value })}
-                      className={errors.confirmPassword ? 'border-destructive' : ''}
-                    />
-                    {errors.confirmPassword && (
-                      <p className="text-sm text-destructive">{errors.confirmPassword}</p>
-                    )}
+
+                  <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-3">
+                    <Label className="text-sm font-medium">قنوات التواصل المفضلة</Label>
+                    <div className="flex gap-6">
+                      <div className="flex items-center gap-2">
+                        <Checkbox
+                          id="allow-whatsapp"
+                          checked={signupData.allowWhatsapp}
+                          onCheckedChange={(checked) => 
+                            setSignupData({ ...signupData, allowWhatsapp: checked as boolean })
+                          }
+                        />
+                        <Label htmlFor="allow-whatsapp" className="text-sm cursor-pointer">
+                          واتساب
+                        </Label>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Checkbox
+                          id="allow-telegram"
+                          checked={signupData.allowTelegram}
+                          onCheckedChange={(checked) => 
+                            setSignupData({ ...signupData, allowTelegram: checked as boolean })
+                          }
+                        />
+                        <Label htmlFor="allow-telegram" className="text-sm cursor-pointer">
+                          تيليجرام
+                        </Label>
+                      </div>
+                    </div>
                   </div>
+
                   <Button type="submit" className="w-full" disabled={isSubmitting}>
                     {isSubmitting ? (
                       <Loader2 className="h-4 w-4 animate-spin" />

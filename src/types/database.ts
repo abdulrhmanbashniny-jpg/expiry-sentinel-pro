@@ -1,6 +1,6 @@
 export type ItemStatus = 'active' | 'expired' | 'archived';
 export type NotificationStatus = 'pending' | 'sent' | 'failed' | 'skipped';
-export type AppRole = 'system_admin' | 'admin' | 'supervisor' | 'employee';
+export type AppRole = 'system_admin' | 'admin' | 'hr_user' | 'supervisor' | 'employee';
 export type EscalationStatus = 'none' | 'supervisor' | 'admin';
 
 export interface Profile {
@@ -141,8 +141,9 @@ export interface LoginHistory {
 
 // Role hierarchy helpers
 export const ROLE_HIERARCHY: Record<AppRole, number> = {
-  system_admin: 4,
-  admin: 3,
+  system_admin: 5,
+  admin: 4,
+  hr_user: 3,
   supervisor: 2,
   employee: 1,
 };
@@ -150,6 +151,7 @@ export const ROLE_HIERARCHY: Record<AppRole, number> = {
 export const ROLE_LABELS: Record<AppRole, string> = {
   system_admin: 'مدير النظام',
   admin: 'المدير',
+  hr_user: 'موظف HR',
   supervisor: 'المشرف',
   employee: 'الموظف',
 };

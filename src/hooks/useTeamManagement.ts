@@ -132,6 +132,11 @@ export function useTeamManagement() {
     },
   });
 
+  const refetch = () => {
+    usersQuery.refetch();
+    teamMembersQuery.refetch();
+  };
+
   return {
     users: usersQuery.data || [],
     teamMembers: teamMembersQuery.data || [],
@@ -140,5 +145,6 @@ export function useTeamManagement() {
     updateRole,
     addTeamMember,
     removeTeamMember,
+    refetch,
   };
 }
