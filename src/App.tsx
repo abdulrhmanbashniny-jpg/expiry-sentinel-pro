@@ -20,6 +20,8 @@ import Security from "./pages/Security";
 import TeamManagement from "./pages/TeamManagement";
 import AIAdvisor from "./pages/AIAdvisor";
 import ComplianceReports from "./pages/ComplianceReports";
+import Departments from "./pages/Departments";
+import UserProfile from "./pages/UserProfile";
 import NotFound from "./pages/NotFound";
 import { Loader2 } from "lucide-react";
 
@@ -70,6 +72,8 @@ const AppRoutes = () => {
         <Route path="integration" element={<Integration />} />
         <Route path="ai-advisor" element={<AIAdvisor />} />
         <Route path="compliance-reports" element={<ComplianceReports />} />
+        <Route path="departments" element={<Departments />} />
+        <Route path="profile" element={<UserProfile />} />
       </Route>
       <Route path="*" element={<NotFound />} />
     </Routes>

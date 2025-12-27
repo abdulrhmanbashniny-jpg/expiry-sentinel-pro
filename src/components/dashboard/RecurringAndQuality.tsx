@@ -102,7 +102,7 @@ const RecurringAndQuality: React.FC<RecurringAndQualityProps> = ({ departmentId 
                       {warning.item?.title || warning.item?.ref_number || 'معاملة'}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      {new Date(warning.changed_at).toLocaleDateString('ar-SA')}
+                      {new Date(warning.changed_at).toLocaleDateString('en-GB')}
                     </p>
                   </div>
                 ))}

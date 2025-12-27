@@ -11,7 +11,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Helmet } from 'react-helmet';
 import { Integration } from '@/types/database';
 import { format } from 'date-fns';
-import { ar } from 'date-fns/locale';
 
 const INTEGRATION_ICONS: Record<string, React.ElementType> = {
   n8n: Workflow,
@@ -361,7 +360,7 @@ export default function Integrations() {
                               ) : (
                                 <X className="h-3 w-3 text-red-500" />
                               )}
-                              آخر اختبار: {format(new Date(integration.last_tested_at), 'PPp', { locale: ar })}
+                              آخر اختبار: {format(new Date(integration.last_tested_at), 'yyyy-MM-dd HH:mm')}
                             </span>
                           ) : (
                             'لم يتم الاختبار بعد'

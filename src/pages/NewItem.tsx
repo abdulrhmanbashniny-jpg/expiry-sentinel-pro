@@ -17,7 +17,6 @@ import { useReminderRules } from '@/hooks/useReminderRules';
 import { useDepartments } from '@/hooks/useDepartments';
 import { CalendarIcon, ArrowRight, Loader2, Clock, AlertTriangle, Building2 } from 'lucide-react';
 import { format } from 'date-fns';
-import { ar } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 
 const NewItem: React.FC = () => {
@@ -161,7 +160,7 @@ const NewItem: React.FC = () => {
                     <PopoverTrigger asChild>
                       <Button variant="outline" className={cn("w-full justify-start text-right", !formData.expiry_date && "text-muted-foreground")}>
                         <CalendarIcon className="ml-2 h-4 w-4" />
-                        {formData.expiry_date ? format(formData.expiry_date, 'PPP', { locale: ar }) : 'اختر التاريخ'}
+                        {formData.expiry_date ? format(formData.expiry_date, 'yyyy-MM-dd') : 'اختر التاريخ'}
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0" align="start">

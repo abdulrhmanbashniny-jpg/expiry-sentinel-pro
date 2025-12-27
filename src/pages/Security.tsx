@@ -10,7 +10,6 @@ import { Helmet } from 'react-helmet';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
-import { ar } from 'date-fns/locale';
 
 export default function Security() {
   const { settings, isLoading, updateSettings } = useSecuritySettings();
@@ -226,7 +225,7 @@ export default function Security() {
                           {entry.profile?.full_name || entry.profile?.email || 'غير معروف'}
                         </TableCell>
                         <TableCell dir="ltr" className="text-right">
-                          {format(new Date(entry.logged_in_at), 'PPp', { locale: ar })}
+                          {format(new Date(entry.logged_in_at), 'yyyy-MM-dd HH:mm')}
                         </TableCell>
                         <TableCell dir="ltr">{entry.ip_address || '-'}</TableCell>
                         <TableCell>
