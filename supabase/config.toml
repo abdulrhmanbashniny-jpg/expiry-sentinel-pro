@@ -56,3 +56,15 @@ verify_jwt = false
 
 [functions.generate-compliance-report]
 verify_jwt = false
+
+[functions.import-user]
+verify_jwt = true
+
+[functions.ai-analyze-evaluation]
+verify_jwt = true
+
+[functions.reset-password]
+verify_jwt = true
+
+[functions.login-with-identifier]
+verify_jwt = false
