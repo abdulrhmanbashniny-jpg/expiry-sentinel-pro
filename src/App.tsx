@@ -26,6 +26,8 @@ import Delegations from "./pages/Delegations";
 import KPITemplates from "./pages/KPITemplates";
 import Evaluations from "./pages/Evaluations";
 import UserImport from "./pages/UserImport";
+import EvaluationReview from "./pages/EvaluationReview";
+import MyResults from "./pages/MyResults";
 import NotFound from "./pages/NotFound";
 import { Loader2 } from "lucide-react";
 
@@ -81,6 +83,8 @@ const AppRoutes = () => {
         <Route path="delegations" element={<Delegations />} />
         <Route path="kpi-templates" element={<KPITemplates />} />
         <Route path="evaluations" element={<Evaluations />} />
+        <Route path="evaluation-review" element={<EvaluationReview />} />
+        <Route path="my-results" element={<MyResults />} />
         <Route path="user-import" element={<UserImport />} />
       </Route>
       <Route path="*" element={<NotFound />} />

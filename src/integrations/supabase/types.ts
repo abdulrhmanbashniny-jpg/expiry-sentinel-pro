@@ -481,6 +481,94 @@ export type Database = {
           },
         ]
       }
+      evaluation_appeals: {
+        Row: {
+          appeal_text: string
+          created_at: string
+          deadline: string
+          evaluatee_id: string
+          id: string
+          published_result_id: string
+          responded_at: string | null
+          responded_by: string | null
+          response_text: string | null
+          status: string
+        }
+        Insert: {
+          appeal_text: string
+          created_at?: string
+          deadline: string
+          evaluatee_id: string
+          id?: string
+          published_result_id: string
+          responded_at?: string | null
+          responded_by?: string | null
+          response_text?: string | null
+          status?: string
+        }
+        Update: {
+          appeal_text?: string
+          created_at?: string
+          deadline?: string
+          evaluatee_id?: string
+          id?: string
+          published_result_id?: string
+          responded_at?: string | null
+          responded_by?: string | null
+          response_text?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "evaluation_appeals_published_result_id_fkey"
+            columns: ["published_result_id"]
+            isOneToOne: false
+            referencedRelation: "published_results"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      evaluation_audit_log: {
+        Row: {
+          action: string
+          created_at: string
+          details: Json | null
+          evaluation_id: string
+          id: string
+          new_status: string | null
+          old_status: string | null
+          performed_by: string
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          details?: Json | null
+          evaluation_id: string
+          id?: string
+          new_status?: string | null
+          old_status?: string | null
+          performed_by: string
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          details?: Json | null
+          evaluation_id?: string
+          id?: string
+          new_status?: string | null
+          old_status?: string | null
+          performed_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "evaluation_audit_log_evaluation_id_fkey"
+            columns: ["evaluation_id"]
+            isOneToOne: false
+            referencedRelation: "evaluations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       evaluation_cycles: {
         Row: {
           allow_360: boolean
@@ -534,13 +622,75 @@ export type Database = {
           },
         ]
       }
+      evaluation_revisions: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          changes_summary: string | null
+          created_at: string
+          created_by: string
+          evaluation_id: string
+          id: string
+          is_approved: boolean
+          original_ai_summary: string | null
+          original_score: number | null
+          reason: string
+          revised_ai_summary: string | null
+          revised_score: number | null
+          revision_number: number
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          changes_summary?: string | null
+          created_at?: string
+          created_by: string
+          evaluation_id: string
+          id?: string
+          is_approved?: boolean
+          original_ai_summary?: string | null
+          original_score?: number | null
+          reason: string
+          revised_ai_summary?: string | null
+          revised_score?: number | null
+          revision_number?: number
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          changes_summary?: string | null
+          created_at?: string
+          created_by?: string
+          evaluation_id?: string
+          id?: string
+          is_approved?: boolean
+          original_ai_summary?: string | null
+          original_score?: number | null
+          reason?: string
+          revised_ai_summary?: string | null
+          revised_score?: number | null
+          revision_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "evaluation_revisions_evaluation_id_fkey"
+            columns: ["evaluation_id"]
+            isOneToOne: false
+            referencedRelation: "evaluations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       evaluations: {
         Row: {
           ai_analyzed_at: string | null
           ai_recommendations: string | null
           ai_risks: string | null
           ai_summary: string | null
+          approved_at: string | null
+          approved_by: string | null
           created_at: string
+          current_revision: number | null
           cycle_id: string
           evaluatee_id: string
           evaluation_type: Database["public"]["Enums"]["evaluation_type"]
@@ -548,6 +698,8 @@ export type Database = {
           id: string
           is_proxy: boolean
           proxy_by: string | null
+          published_at: string | null
+          published_by: string | null
           reviewed_at: string | null
           status: Database["public"]["Enums"]["evaluation_status"]
           submitted_at: string | null
@@ -559,7 +711,10 @@ export type Database = {
           ai_recommendations?: string | null
           ai_risks?: string | null
           ai_summary?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
           created_at?: string
+          current_revision?: number | null
           cycle_id: string
           evaluatee_id: string
           evaluation_type: Database["public"]["Enums"]["evaluation_type"]
@@ -567,6 +722,8 @@ export type Database = {
           id?: string
           is_proxy?: boolean
           proxy_by?: string | null
+          published_at?: string | null
+          published_by?: string | null
           reviewed_at?: string | null
           status?: Database["public"]["Enums"]["evaluation_status"]
           submitted_at?: string | null
@@ -578,7 +735,10 @@ export type Database = {
           ai_recommendations?: string | null
           ai_risks?: string | null
           ai_summary?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
           created_at?: string
+          current_revision?: number | null
           cycle_id?: string
           evaluatee_id?: string
           evaluation_type?: Database["public"]["Enums"]["evaluation_type"]
@@ -586,6 +746,8 @@ export type Database = {
           id?: string
           is_proxy?: boolean
           proxy_by?: string | null
+          published_at?: string | null
+          published_by?: string | null
           reviewed_at?: string | null
           status?: Database["public"]["Enums"]["evaluation_status"]
           submitted_at?: string | null
@@ -1111,6 +1273,57 @@ export type Database = {
         }
         Relationships: []
       }
+      published_results: {
+        Row: {
+          ai_summary: string | null
+          cycle_id: string
+          evaluatee_id: string
+          evaluation_id: string
+          final_score: number
+          id: string
+          published_at: string
+          published_by: string
+          revision_number: number
+        }
+        Insert: {
+          ai_summary?: string | null
+          cycle_id: string
+          evaluatee_id: string
+          evaluation_id: string
+          final_score: number
+          id?: string
+          published_at?: string
+          published_by: string
+          revision_number?: number
+        }
+        Update: {
+          ai_summary?: string | null
+          cycle_id?: string
+          evaluatee_id?: string
+          evaluation_id?: string
+          final_score?: number
+          id?: string
+          published_at?: string
+          published_by?: string
+          revision_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "published_results_cycle_id_fkey"
+            columns: ["cycle_id"]
+            isOneToOne: false
+            referencedRelation: "evaluation_cycles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "published_results_evaluation_id_fkey"
+            columns: ["evaluation_id"]
+            isOneToOne: false
+            referencedRelation: "evaluations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       recipients: {
         Row: {
           created_at: string
@@ -1390,6 +1603,11 @@ export type Database = {
         | "submitted"
         | "reviewed"
         | "completed"
+        | "under_review"
+        | "approved"
+        | "published"
+        | "appealed"
+        | "closed"
       evaluation_type:
         | "supervisor_to_employee"
         | "manager_to_supervisor"
@@ -1550,6 +1768,11 @@ export const Constants = {
         "submitted",
         "reviewed",
         "completed",
+        "under_review",
+        "approved",
+        "published",
+        "appealed",
+        "closed",
       ],
       evaluation_type: [
         "supervisor_to_employee",
