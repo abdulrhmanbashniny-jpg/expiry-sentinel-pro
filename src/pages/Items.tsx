@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Search, FileText, Trash2, Edit, Archive } from 'lucide-react';
+import { Plus, Search, FileText, Trash2, Edit, Archive, Bell } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,6 +14,7 @@ import { ItemStatus } from '@/types/database';
 import { WorkflowStatus, WORKFLOW_STATUS_LABELS } from '@/hooks/useDashboardData';
 import TestWhatsAppDialog from '@/components/TestWhatsAppDialog';
 import SendTelegramDialog from '@/components/SendTelegramDialog';
+import BulkReminderDialog from '@/components/items/BulkReminderDialog';
 
 const Items: React.FC = () => {
   const navigate = useNavigate();
@@ -23,6 +24,7 @@ const Items: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [workflowFilter, setWorkflowFilter] = useState<string>('active');
+  const [bulkReminderOpen, setBulkReminderOpen] = useState(false);
 
   // Filter items based on workflow tab
   const getFilteredByWorkflow = () => {
@@ -76,10 +78,16 @@ const Items: React.FC = () => {
           <h1 className="text-2xl font-bold">العناصر</h1>
           <p className="text-muted-foreground">إدارة التراخيص والعقود والوثائق</p>
         </div>
-        <Button onClick={() => navigate('/items/new')} className="gap-2">
-          <Plus className="h-4 w-4" />
-          إضافة عنصر
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setBulkReminderOpen(true)} className="gap-2">
+            <Bell className="h-4 w-4" />
+            تذكير جماعي
+          </Button>
+          <Button onClick={() => navigate('/items/new')} className="gap-2">
+            <Plus className="h-4 w-4" />
+            إضافة عنصر
+          </Button>
+        </div>
       </div>
 
       {/* Workflow Tabs */}
@@ -222,6 +230,20 @@ const Items: React.FC = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* Bulk Reminder Dialog */}
+      <BulkReminderDialog
+        items={filteredItems.map(item => ({
+          id: item.id,
+          title: item.title,
+          ref_number: item.ref_number,
+          expiry_date: item.expiry_date,
+          responsible_person: item.responsible_person,
+          department_id: (item as any).department_id,
+        }))}
+        open={bulkReminderOpen}
+        onOpenChange={setBulkReminderOpen}
+      />
     </div>
   );
 };
