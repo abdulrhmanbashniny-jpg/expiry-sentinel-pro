@@ -14,6 +14,8 @@ import {
   UsersRound,
   Bot,
   BarChart3,
+  Building2,
+  UserCircle,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -39,6 +41,7 @@ const navItems: NavItem[] = [
   { to: '/items', icon: FileText, label: 'العناصر' },
   { to: '/recipients', icon: Users, label: 'المستلمون', minRole: 'supervisor' },
   { to: '/categories', icon: FolderOpen, label: 'الفئات', minRole: 'admin' },
+  { to: '/departments', icon: Building2, label: 'الأقسام', minRole: 'admin' },
   { to: '/reminder-rules', icon: Bell, label: 'قواعد التذكير', minRole: 'admin' },
   { to: '/ai-advisor', icon: Bot, label: 'مستشار الامتثال', minRole: 'admin' },
   { to: '/compliance-reports', icon: BarChart3, label: 'تقارير الالتزام', minRole: 'admin' },
@@ -46,6 +49,7 @@ const navItems: NavItem[] = [
   { to: '/integrations', icon: Link2, label: 'التكاملات', minRole: 'system_admin' },
   { to: '/security', icon: Shield, label: 'الأمان', minRole: 'system_admin' },
   { to: '/settings', icon: Settings, label: 'الإعدادات', minRole: 'admin' },
+  { to: '/profile', icon: UserCircle, label: 'ملفي الشخصي' },
 ];
 
 export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle, isMobile, onNavigate }) => {

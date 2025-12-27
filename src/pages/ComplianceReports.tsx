@@ -10,7 +10,6 @@ import { Loader2, TrendingUp, TrendingDown, Building, FolderOpen, Users, Refresh
 import { Helmet } from 'react-helmet';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
-import { ar } from 'date-fns/locale';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
 
 const COLORS = ['#22c55e', '#eab308', '#ef4444', '#3b82f6', '#8b5cf6', '#f97316'];
@@ -438,7 +437,7 @@ export default function ComplianceReports() {
                             <Badge variant="outline">{report.report_type}</Badge>
                           </div>
                           <CardDescription>
-                            {format(new Date(report.created_at), 'PPpp', { locale: ar })}
+                            {format(new Date(report.created_at), 'yyyy-MM-dd HH:mm')}
                             {report.sent_at && ' • تم الإرسال'}
                           </CardDescription>
                         </CardHeader>
