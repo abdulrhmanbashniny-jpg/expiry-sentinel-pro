@@ -41,6 +41,123 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_prompts: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          is_active: boolean
+          prompt_key: string
+          prompt_text: string
+          system_memory: string | null
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          id?: string
+          is_active?: boolean
+          prompt_key: string
+          prompt_text: string
+          system_memory?: string | null
+          updated_at?: string
+          version?: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          is_active?: boolean
+          prompt_key?: string
+          prompt_text?: string
+          system_memory?: string | null
+          updated_at?: string
+          version?: number
+        }
+        Relationships: []
+      }
+      ai_provider_settings: {
+        Row: {
+          config: Json | null
+          created_at: string
+          id: string
+          is_active: boolean
+          is_fallback: boolean
+          is_primary: boolean
+          last_reset_at: string | null
+          priority: number
+          provider_name: string
+          updated_at: string
+          usage_count: number
+          usage_limit: number | null
+        }
+        Insert: {
+          config?: Json | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          is_fallback?: boolean
+          is_primary?: boolean
+          last_reset_at?: string | null
+          priority?: number
+          provider_name: string
+          updated_at?: string
+          usage_count?: number
+          usage_limit?: number | null
+        }
+        Update: {
+          config?: Json | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          is_fallback?: boolean
+          is_primary?: boolean
+          last_reset_at?: string | null
+          priority?: number
+          provider_name?: string
+          updated_at?: string
+          usage_count?: number
+          usage_limit?: number | null
+        }
+        Relationships: []
+      }
+      ai_usage_log: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          id: string
+          input_tokens: number | null
+          output_tokens: number | null
+          prompt_key: string | null
+          provider_name: string
+          response_time_ms: number | null
+          success: boolean
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          input_tokens?: number | null
+          output_tokens?: number | null
+          prompt_key?: string | null
+          provider_name: string
+          response_time_ms?: number | null
+          success?: boolean
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          input_tokens?: number | null
+          output_tokens?: number | null
+          prompt_key?: string | null
+          provider_name?: string
+          response_time_ms?: number | null
+          success?: boolean
+        }
+        Relationships: []
+      }
       categories: {
         Row: {
           code: string | null
@@ -194,6 +311,92 @@ export type Database = {
         }
         Relationships: []
       }
+      delegation_audit_log: {
+        Row: {
+          action: string
+          created_at: string
+          delegation_id: string
+          details: Json | null
+          id: string
+          performed_by: string
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          delegation_id: string
+          details?: Json | null
+          id?: string
+          performed_by: string
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          delegation_id?: string
+          details?: Json | null
+          id?: string
+          performed_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "delegation_audit_log_delegation_id_fkey"
+            columns: ["delegation_id"]
+            isOneToOne: false
+            referencedRelation: "delegations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      delegations: {
+        Row: {
+          accepted_at: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
+          created_at: string
+          delegate_id: string
+          delegator_id: string
+          from_datetime: string
+          id: string
+          reason: string | null
+          rejected_at: string | null
+          rejection_reason: string | null
+          status: Database["public"]["Enums"]["delegation_status"]
+          to_datetime: string
+          updated_at: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          cancelled_at?: string | null
+          cancelled_by?: string | null
+          created_at?: string
+          delegate_id: string
+          delegator_id: string
+          from_datetime: string
+          id?: string
+          reason?: string | null
+          rejected_at?: string | null
+          rejection_reason?: string | null
+          status?: Database["public"]["Enums"]["delegation_status"]
+          to_datetime: string
+          updated_at?: string
+        }
+        Update: {
+          accepted_at?: string | null
+          cancelled_at?: string | null
+          cancelled_by?: string | null
+          created_at?: string
+          delegate_id?: string
+          delegator_id?: string
+          from_datetime?: string
+          id?: string
+          reason?: string | null
+          rejected_at?: string | null
+          rejection_reason?: string | null
+          status?: Database["public"]["Enums"]["delegation_status"]
+          to_datetime?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       departments: {
         Row: {
           code: string | null
@@ -226,6 +429,178 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      evaluation_answers: {
+        Row: {
+          choice_value: string | null
+          created_at: string
+          evaluation_id: string
+          id: string
+          numeric_value: number | null
+          question_id: string
+          score: number | null
+          text_value: string | null
+          updated_at: string
+        }
+        Insert: {
+          choice_value?: string | null
+          created_at?: string
+          evaluation_id: string
+          id?: string
+          numeric_value?: number | null
+          question_id: string
+          score?: number | null
+          text_value?: string | null
+          updated_at?: string
+        }
+        Update: {
+          choice_value?: string | null
+          created_at?: string
+          evaluation_id?: string
+          id?: string
+          numeric_value?: number | null
+          question_id?: string
+          score?: number | null
+          text_value?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "evaluation_answers_evaluation_id_fkey"
+            columns: ["evaluation_id"]
+            isOneToOne: false
+            referencedRelation: "evaluations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "evaluation_answers_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "kpi_template_questions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      evaluation_cycles: {
+        Row: {
+          allow_360: boolean
+          allow_self_assessment: boolean
+          created_at: string
+          created_by: string
+          end_date: string
+          id: string
+          is_active: boolean
+          name: string
+          name_en: string | null
+          start_date: string
+          template_id: string
+          updated_at: string
+        }
+        Insert: {
+          allow_360?: boolean
+          allow_self_assessment?: boolean
+          created_at?: string
+          created_by: string
+          end_date: string
+          id?: string
+          is_active?: boolean
+          name: string
+          name_en?: string | null
+          start_date: string
+          template_id: string
+          updated_at?: string
+        }
+        Update: {
+          allow_360?: boolean
+          allow_self_assessment?: boolean
+          created_at?: string
+          created_by?: string
+          end_date?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          name_en?: string | null
+          start_date?: string
+          template_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "evaluation_cycles_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "kpi_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      evaluations: {
+        Row: {
+          ai_analyzed_at: string | null
+          ai_recommendations: string | null
+          ai_risks: string | null
+          ai_summary: string | null
+          created_at: string
+          cycle_id: string
+          evaluatee_id: string
+          evaluation_type: Database["public"]["Enums"]["evaluation_type"]
+          evaluator_id: string
+          id: string
+          is_proxy: boolean
+          proxy_by: string | null
+          reviewed_at: string | null
+          status: Database["public"]["Enums"]["evaluation_status"]
+          submitted_at: string | null
+          total_score: number | null
+          updated_at: string
+        }
+        Insert: {
+          ai_analyzed_at?: string | null
+          ai_recommendations?: string | null
+          ai_risks?: string | null
+          ai_summary?: string | null
+          created_at?: string
+          cycle_id: string
+          evaluatee_id: string
+          evaluation_type: Database["public"]["Enums"]["evaluation_type"]
+          evaluator_id: string
+          id?: string
+          is_proxy?: boolean
+          proxy_by?: string | null
+          reviewed_at?: string | null
+          status?: Database["public"]["Enums"]["evaluation_status"]
+          submitted_at?: string | null
+          total_score?: number | null
+          updated_at?: string
+        }
+        Update: {
+          ai_analyzed_at?: string | null
+          ai_recommendations?: string | null
+          ai_risks?: string | null
+          ai_summary?: string | null
+          created_at?: string
+          cycle_id?: string
+          evaluatee_id?: string
+          evaluation_type?: Database["public"]["Enums"]["evaluation_type"]
+          evaluator_id?: string
+          id?: string
+          is_proxy?: boolean
+          proxy_by?: string | null
+          reviewed_at?: string | null
+          status?: Database["public"]["Enums"]["evaluation_status"]
+          submitted_at?: string | null
+          total_score?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "evaluations_cycle_id_fkey"
+            columns: ["cycle_id"]
+            isOneToOne: false
+            referencedRelation: "evaluation_cycles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       integrations: {
         Row: {
@@ -438,6 +813,133 @@ export type Database = {
           },
         ]
       }
+      kpi_template_axes: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          name_en: string | null
+          sort_order: number
+          template_id: string
+          weight: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          name_en?: string | null
+          sort_order?: number
+          template_id: string
+          weight?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          name_en?: string | null
+          sort_order?: number
+          template_id?: string
+          weight?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kpi_template_axes_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "kpi_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      kpi_template_questions: {
+        Row: {
+          answer_type: Database["public"]["Enums"]["question_answer_type"]
+          axis_id: string
+          choices: Json | null
+          created_at: string
+          id: string
+          max_value: number | null
+          min_value: number | null
+          question_text: string
+          question_text_en: string | null
+          sort_order: number
+          weight: number
+        }
+        Insert: {
+          answer_type?: Database["public"]["Enums"]["question_answer_type"]
+          axis_id: string
+          choices?: Json | null
+          created_at?: string
+          id?: string
+          max_value?: number | null
+          min_value?: number | null
+          question_text: string
+          question_text_en?: string | null
+          sort_order?: number
+          weight?: number
+        }
+        Update: {
+          answer_type?: Database["public"]["Enums"]["question_answer_type"]
+          axis_id?: string
+          choices?: Json | null
+          created_at?: string
+          id?: string
+          max_value?: number | null
+          min_value?: number | null
+          question_text?: string
+          question_text_en?: string | null
+          sort_order?: number
+          weight?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kpi_template_questions_axis_id_fkey"
+            columns: ["axis_id"]
+            isOneToOne: false
+            referencedRelation: "kpi_template_axes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      kpi_templates: {
+        Row: {
+          created_at: string
+          created_by: string
+          description: string | null
+          description_en: string | null
+          id: string
+          is_active: boolean
+          name: string
+          name_en: string | null
+          period_type: Database["public"]["Enums"]["evaluation_period_type"]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          description?: string | null
+          description_en?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          name_en?: string | null
+          period_type?: Database["public"]["Enums"]["evaluation_period_type"]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          description_en?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          name_en?: string | null
+          period_type?: Database["public"]["Enums"]["evaluation_period_type"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
       login_history: {
         Row: {
           id: string
@@ -537,6 +1039,30 @@ export type Database = {
           },
         ]
       }
+      password_audit_log: {
+        Row: {
+          action: string
+          created_at: string
+          id: string
+          performed_by: string | null
+          user_id: string
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          id?: string
+          performed_by?: string | null
+          user_id: string
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          id?: string
+          performed_by?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           allow_telegram: boolean | null
@@ -546,6 +1072,7 @@ export type Database = {
           employee_number: string | null
           full_name: string | null
           id: string
+          must_change_password: boolean
           national_id: string | null
           phone: string | null
           telegram_user_id: string | null
@@ -560,6 +1087,7 @@ export type Database = {
           employee_number?: string | null
           full_name?: string | null
           id?: string
+          must_change_password?: boolean
           national_id?: string | null
           phone?: string | null
           telegram_user_id?: string | null
@@ -574,6 +1102,7 @@ export type Database = {
           employee_number?: string | null
           full_name?: string | null
           id?: string
+          must_change_password?: boolean
           national_id?: string | null
           phone?: string | null
           telegram_user_id?: string | null
@@ -746,6 +1275,39 @@ export type Database = {
           },
         ]
       }
+      user_import_logs: {
+        Row: {
+          created_at: string
+          error_details: Json | null
+          failure_count: number
+          file_name: string
+          id: string
+          imported_by: string
+          success_count: number
+          total_rows: number
+        }
+        Insert: {
+          created_at?: string
+          error_details?: Json | null
+          failure_count?: number
+          file_name: string
+          id?: string
+          imported_by: string
+          success_count?: number
+          total_rows?: number
+        }
+        Update: {
+          created_at?: string
+          error_details?: Json | null
+          failure_count?: number
+          file_name?: string
+          id?: string
+          imported_by?: string
+          success_count?: number
+          total_rows?: number
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -814,6 +1376,26 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "hr_user" | "system_admin" | "supervisor" | "employee"
+      delegation_status:
+        | "pending"
+        | "accepted"
+        | "rejected"
+        | "active"
+        | "completed"
+        | "cancelled"
+      evaluation_period_type: "annual" | "semi_annual" | "quarterly" | "monthly"
+      evaluation_status:
+        | "draft"
+        | "in_progress"
+        | "submitted"
+        | "reviewed"
+        | "completed"
+      evaluation_type:
+        | "supervisor_to_employee"
+        | "manager_to_supervisor"
+        | "admin_to_manager"
+        | "self_assessment"
+        | "peer_360"
       item_status: "active" | "expired" | "archived"
       item_workflow_status:
         | "new"
@@ -824,6 +1406,7 @@ export type Database = {
         | "escalated_to_manager"
         | "finished"
       notification_status: "pending" | "sent" | "failed" | "skipped"
+      question_answer_type: "numeric" | "choice" | "text"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -952,6 +1535,29 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "hr_user", "system_admin", "supervisor", "employee"],
+      delegation_status: [
+        "pending",
+        "accepted",
+        "rejected",
+        "active",
+        "completed",
+        "cancelled",
+      ],
+      evaluation_period_type: ["annual", "semi_annual", "quarterly", "monthly"],
+      evaluation_status: [
+        "draft",
+        "in_progress",
+        "submitted",
+        "reviewed",
+        "completed",
+      ],
+      evaluation_type: [
+        "supervisor_to_employee",
+        "manager_to_supervisor",
+        "admin_to_manager",
+        "self_assessment",
+        "peer_360",
+      ],
       item_status: ["active", "expired", "archived"],
       item_workflow_status: [
         "new",
@@ -963,6 +1569,7 @@ export const Constants = {
         "finished",
       ],
       notification_status: ["pending", "sent", "failed", "skipped"],
+      question_answer_type: ["numeric", "choice", "text"],
     },
   },
 } as const
