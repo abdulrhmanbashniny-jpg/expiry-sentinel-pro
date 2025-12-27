@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -10,12 +10,14 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
 import { useItems } from '@/hooks/useItems';
 import { useCategories } from '@/hooks/useCategories';
 import { useRecipients } from '@/hooks/useRecipients';
 import { useReminderRules } from '@/hooks/useReminderRules';
 import { useDepartments } from '@/hooks/useDepartments';
-import { CalendarIcon, ArrowRight, Loader2, Clock, AlertTriangle, Building2 } from 'lucide-react';
+import { useTeamManagement } from '@/hooks/useTeamManagement';
+import { CalendarIcon, ArrowRight, Loader2, Clock, AlertTriangle, Building2, User, Users } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 
@@ -26,26 +28,89 @@ const NewItem: React.FC = () => {
   const { recipients } = useRecipients();
   const { rules } = useReminderRules();
   const { departments, isLoading: departmentsLoading } = useDepartments();
+  const { users, departmentScopes } = useTeamManagement();
 
   const [formData, setFormData] = useState({
     title: '',
     category_id: '',
     expiry_date: undefined as Date | undefined,
     expiry_time: '09:00',
-    department_id: '', // Required field
+    department_id: '',
     owner_department: '',
     responsible_person: '',
+    responsible_user_id: '', // New: user ID for responsible person
     notes: '',
     reminder_rule_id: '',
   });
   const [selectedRecipients, setSelectedRecipients] = useState<string[]>([]);
   const [validationError, setValidationError] = useState<string | null>(null);
 
+  // Filter categories based on selected department
+  const filteredCategories = formData.department_id 
+    ? categories.filter(cat => {
+        const catDeptId = (cat as any).department_id;
+        return !catDeptId || catDeptId === formData.department_id;
+      })
+    : categories;
+
+  // Get users in the selected department
+  const getDepartmentUsers = () => {
+    if (!formData.department_id) return [];
+    
+    // Get user IDs that belong to this department
+    const deptUserIds = departmentScopes
+      .filter(scope => scope.department_id === formData.department_id)
+      .map(scope => scope.user_id);
+    
+    return users.filter(u => deptUserIds.includes(u.profile.user_id));
+  };
+
+  const departmentUsers = getDepartmentUsers();
+
+  // Filter recipients based on selected department
+  const filteredRecipients = recipients.filter(r => r.is_active);
+
+  // When responsible person changes, auto-add them as recipient
+  useEffect(() => {
+    if (formData.responsible_user_id) {
+      const user = users.find(u => u.profile.user_id === formData.responsible_user_id);
+      if (user) {
+        // Find matching recipient by phone or name
+        const matchingRecipient = recipients.find(r => 
+          r.whatsapp_number === (user.profile as any).phone ||
+          r.name === (user.profile as any).full_name
+        );
+        
+        if (matchingRecipient && !selectedRecipients.includes(matchingRecipient.id)) {
+          setSelectedRecipients(prev => [...prev, matchingRecipient.id]);
+        }
+        
+        // Update responsible_person text
+        setFormData(prev => ({
+          ...prev,
+          responsible_person: (user.profile as any).full_name || ''
+        }));
+      }
+    }
+  }, [formData.responsible_user_id, users, recipients]);
+
+  // Reset category when department changes
+  useEffect(() => {
+    if (formData.department_id) {
+      const currentCategory = categories.find(c => c.id === formData.category_id);
+      const catDeptId = (currentCategory as any)?.department_id;
+      
+      // If current category doesn't belong to new department, reset it
+      if (catDeptId && catDeptId !== formData.department_id) {
+        setFormData(prev => ({ ...prev, category_id: '' }));
+      }
+    }
+  }, [formData.department_id, categories]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setValidationError(null);
 
-    // Data Quality Guard: Validate required fields
     if (!formData.title) {
       setValidationError('يجب إدخال عنوان المعاملة');
       return;
@@ -115,7 +180,7 @@ const NewItem: React.FC = () => {
                 />
               </div>
 
-              {/* Department Selection - Required with Data Quality Guard */}
+              {/* Department Selection - Required */}
               <div className="space-y-2">
                 <Label className="flex items-center gap-2">
                   <Building2 className="h-4 w-4" />
@@ -137,20 +202,35 @@ const NewItem: React.FC = () => {
                   </SelectContent>
                 </Select>
                 {departments.length === 0 && !departmentsLoading && (
-                  <p className="text-sm text-destructive">لا توجد أقسام. يرجى إنشاء قسم أولاً من صفحة إدارة الأقسام.</p>
+                  <p className="text-sm text-destructive">لا توجد أقسام. يرجى إنشاء قسم أولاً.</p>
                 )}
               </div>
 
+              {/* Category - Filtered by Department */}
               <div className="space-y-2">
                 <Label>الفئة</Label>
-                <Select value={formData.category_id} onValueChange={(v) => setFormData({ ...formData, category_id: v })}>
-                  <SelectTrigger><SelectValue placeholder="اختر الفئة" /></SelectTrigger>
+                <Select 
+                  value={formData.category_id} 
+                  onValueChange={(v) => setFormData({ ...formData, category_id: v })}
+                  disabled={!formData.department_id}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={formData.department_id ? "اختر الفئة" : "اختر القسم أولاً"} />
+                  </SelectTrigger>
                   <SelectContent>
-                    {categories.map((cat) => (
-                      <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
+                    {filteredCategories.map((cat) => (
+                      <SelectItem key={cat.id} value={cat.id}>
+                        {cat.name}
+                        {(cat as any).department_id && (
+                          <Badge variant="outline" className="mr-2 text-xs">خاص بالقسم</Badge>
+                        )}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+                {formData.department_id && filteredCategories.length === 0 && (
+                  <p className="text-sm text-muted-foreground">لا توجد فئات لهذا القسم</p>
+                )}
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2">
@@ -182,15 +262,35 @@ const NewItem: React.FC = () => {
                 </div>
               </div>
 
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="department">اسم القسم (نص)</Label>
-                  <Input id="department" value={formData.owner_department} onChange={(e) => setFormData({ ...formData, owner_department: e.target.value })} placeholder="اختياري - للتوافق مع النظام القديم" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="responsible">المسؤول</Label>
-                  <Input id="responsible" value={formData.responsible_person} onChange={(e) => setFormData({ ...formData, responsible_person: e.target.value })} />
-                </div>
+              {/* Responsible Person - From Department Users */}
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2">
+                  <User className="h-4 w-4" />
+                  المسؤول
+                </Label>
+                {formData.department_id && departmentUsers.length > 0 ? (
+                  <Select 
+                    value={formData.responsible_user_id} 
+                    onValueChange={(v) => setFormData({ ...formData, responsible_user_id: v })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="اختر المسؤول من القسم" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {departmentUsers.map((user) => (
+                        <SelectItem key={user.profile.user_id} value={user.profile.user_id}>
+                          {(user.profile as any).full_name || (user.profile as any).email}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <Input 
+                    value={formData.responsible_person} 
+                    onChange={(e) => setFormData({ ...formData, responsible_person: e.target.value })} 
+                    placeholder={formData.department_id ? "لا يوجد مستخدمين في القسم" : "اختر القسم أولاً"}
+                  />
+                )}
               </div>
 
               <div className="space-y-2">
@@ -221,29 +321,49 @@ const NewItem: React.FC = () => {
 
             <Card>
               <CardHeader>
-                <CardTitle>المستلمون</CardTitle>
+                <CardTitle className="flex items-center gap-2">
+                  <Users className="h-5 w-5" />
+                  المستلمون
+                  {selectedRecipients.length > 0 && (
+                    <Badge variant="secondary">{selectedRecipients.length}</Badge>
+                  )}
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-3 max-h-[200px] overflow-y-auto">
-                  {recipients.filter(r => r.is_active).map((recipient) => (
-                    <div key={recipient.id} className="flex items-center gap-3">
-                      <Checkbox
-                        id={recipient.id}
-                        checked={selectedRecipients.includes(recipient.id)}
-                        onCheckedChange={(checked) => {
-                          setSelectedRecipients(checked
-                            ? [...selectedRecipients, recipient.id]
-                            : selectedRecipients.filter(id => id !== recipient.id)
-                          );
-                        }}
-                      />
-                      <Label htmlFor={recipient.id} className="flex-1 cursor-pointer">
-                        <span className="font-medium">{recipient.name}</span>
-                        <span className="block text-sm text-muted-foreground">{recipient.whatsapp_number}</span>
-                      </Label>
-                    </div>
-                  ))}
-                  {recipients.length === 0 && <p className="text-sm text-muted-foreground">لا يوجد مستلمون. أضف مستلمين أولاً.</p>}
+                  {filteredRecipients.map((recipient) => {
+                    const isAutoSelected = formData.responsible_user_id && 
+                      users.find(u => 
+                        u.profile.user_id === formData.responsible_user_id && 
+                        ((u.profile as any).phone === recipient.whatsapp_number || 
+                         (u.profile as any).full_name === recipient.name)
+                      );
+                    
+                    return (
+                      <div key={recipient.id} className="flex items-center gap-3">
+                        <Checkbox
+                          id={recipient.id}
+                          checked={selectedRecipients.includes(recipient.id)}
+                          onCheckedChange={(checked) => {
+                            setSelectedRecipients(checked
+                              ? [...selectedRecipients, recipient.id]
+                              : selectedRecipients.filter(id => id !== recipient.id)
+                            );
+                          }}
+                        />
+                        <Label htmlFor={recipient.id} className="flex-1 cursor-pointer">
+                          <span className="font-medium">{recipient.name}</span>
+                          <span className="block text-sm text-muted-foreground">{recipient.whatsapp_number}</span>
+                        </Label>
+                        {isAutoSelected && (
+                          <Badge variant="outline" className="text-xs">المسؤول</Badge>
+                        )}
+                      </div>
+                    );
+                  })}
+                  {filteredRecipients.length === 0 && (
+                    <p className="text-sm text-muted-foreground">لا يوجد مستلمون. أضف مستلمين أولاً.</p>
+                  )}
                 </div>
               </CardContent>
             </Card>

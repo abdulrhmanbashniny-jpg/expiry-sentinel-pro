@@ -162,6 +162,7 @@ export type Database = {
         Row: {
           code: string | null
           created_at: string
+          department_id: string | null
           description: string | null
           id: string
           name: string
@@ -170,6 +171,7 @@ export type Database = {
         Insert: {
           code?: string | null
           created_at?: string
+          department_id?: string | null
           description?: string | null
           id?: string
           name: string
@@ -178,12 +180,21 @@ export type Database = {
         Update: {
           code?: string | null
           created_at?: string
+          department_id?: string | null
           description?: string | null
           id?: string
           name?: string
           risk_level?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "categories_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       compliance_reports: {
         Row: {
