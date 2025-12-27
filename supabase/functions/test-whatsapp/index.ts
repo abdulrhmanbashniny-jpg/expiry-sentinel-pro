@@ -117,7 +117,7 @@ HR Expiry Reminder System`;
     // Format the message
     const message = template
       .replace(/\{\{title\}\}/g, item.title)
-      .replace(/\{\{expiry_date\}\}/g, new Date(item.expiry_date).toLocaleDateString('ar-SA'))
+      .replace(/\{\{expiry_date\}\}/g, new Date(item.expiry_date).toISOString().split('T')[0])
       .replace(/\{\{expiry_time\}\}/g, item.expiry_time || '09:00')
       .replace(/\{\{days_left\}\}/g, daysLeft.toString())
       .replace(/\{\{category\}\}/g, item.category?.name || 'غير محدد')
