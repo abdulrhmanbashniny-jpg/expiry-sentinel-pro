@@ -38,7 +38,7 @@ export default function Delegations() {
   const { user, isSystemAdmin } = useAuth();
   const { delegations, auditLogs, createDelegation, acceptDelegation, rejectDelegation, cancelDelegation, isLoading } = useDelegations();
   const { users } = useTeamManagement();
-  const profiles = users.map(u => ({ user_id: u.user_id, full_name: u.full_name, email: u.email }));
+  const profiles = users.map(u => ({ user_id: u.profile.user_id, full_name: u.profile.full_name, email: u.profile.email }));
 
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isRejectOpen, setIsRejectOpen] = useState(false);

@@ -22,6 +22,10 @@ import AIAdvisor from "./pages/AIAdvisor";
 import ComplianceReports from "./pages/ComplianceReports";
 import Departments from "./pages/Departments";
 import UserProfile from "./pages/UserProfile";
+import Delegations from "./pages/Delegations";
+import KPITemplates from "./pages/KPITemplates";
+import Evaluations from "./pages/Evaluations";
+import UserImport from "./pages/UserImport";
 import NotFound from "./pages/NotFound";
 import { Loader2 } from "lucide-react";
 
@@ -74,6 +78,10 @@ const AppRoutes = () => {
         <Route path="compliance-reports" element={<ComplianceReports />} />
         <Route path="departments" element={<Departments />} />
         <Route path="profile" element={<UserProfile />} />
+        <Route path="delegations" element={<Delegations />} />
+        <Route path="kpi-templates" element={<KPITemplates />} />
+        <Route path="evaluations" element={<Evaluations />} />
+        <Route path="user-import" element={<UserImport />} />
       </Route>
       <Route path="*" element={<NotFound />} />
     </Routes>
