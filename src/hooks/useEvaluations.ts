@@ -4,7 +4,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 
 export type EvaluationType = 'supervisor_to_employee' | 'manager_to_supervisor' | 'admin_to_manager' | 'self_assessment' | 'peer_360';
-export type EvaluationStatus = 'draft' | 'in_progress' | 'submitted' | 'reviewed' | 'completed';
+export type EvaluationStatus = 'draft' | 'in_progress' | 'submitted' | 'under_review' | 'reviewed' | 'approved' | 'published' | 'appealed' | 'completed' | 'closed';
 
 export interface EvaluationCycle {
   id: string;
@@ -33,6 +33,11 @@ export interface Evaluation {
   proxy_by: string | null;
   submitted_at: string | null;
   reviewed_at: string | null;
+  approved_by: string | null;
+  approved_at: string | null;
+  published_by: string | null;
+  published_at: string | null;
+  current_revision: number | null;
   ai_summary: string | null;
   ai_risks: string | null;
   ai_recommendations: string | null;

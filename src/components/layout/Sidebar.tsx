@@ -20,6 +20,7 @@ import {
   ClipboardList,
   Target,
   Upload,
+  FileCheck,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -52,6 +53,8 @@ const navItems: NavItem[] = [
   { to: '/delegations', icon: UserCheck, label: 'التوكيلات' },
   { to: '/kpi-templates', icon: ClipboardList, label: 'قوالب التقييم', minRole: 'admin' },
   { to: '/evaluations', icon: Target, label: 'تقييم الأداء', minRole: 'supervisor' },
+  { to: '/evaluation-review', icon: FileCheck, label: 'مراجعة التقييمات', minRole: 'system_admin' },
+  { to: '/my-results', icon: BarChart3, label: 'نتائجي' },
   { to: '/team-management', icon: UsersRound, label: 'إدارة الفريق', minRole: 'system_admin' },
   { to: '/user-import', icon: Upload, label: 'استيراد المستخدمين', minRole: 'system_admin' },
   { to: '/integrations', icon: Link2, label: 'التكاملات', minRole: 'system_admin' },
