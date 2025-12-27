@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useKPITemplates, EvaluationPeriodType, QuestionAnswerType } from '@/hooks/useKPITemplates';
+import { useKPITemplates, EvaluationPeriodType, QuestionAnswerType, KPITemplateAxis, KPITemplateQuestion } from '@/hooks/useKPITemplates';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,8 +11,33 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Plus, Edit, Trash2, FileText, Layers, HelpCircle } from 'lucide-react';
+import { Plus, Edit, Trash2, FileText, Layers, HelpCircle, Upload, FileJson, Eye } from 'lucide-react';
 import { format } from 'date-fns';
+import { useToast } from '@/hooks/use-toast';
+
+interface ImportedTemplate {
+  name: string;
+  name_en?: string;
+  description?: string;
+  description_en?: string;
+  period_type: EvaluationPeriodType;
+  axes: Array<{
+    name: string;
+    name_en?: string;
+    weight: number;
+    sort_order: number;
+    questions: Array<{
+      question_text: string;
+      question_text_en?: string;
+      answer_type: QuestionAnswerType;
+      choices?: string[];
+      min_value?: number;
+      max_value?: number;
+      weight: number;
+      sort_order: number;
+    }>;
+  }>;
+}
 
 const periodLabels: Record<EvaluationPeriodType, string> = {
   annual: 'سنوي',
@@ -48,11 +73,16 @@ export default function KPITemplates() {
   const [isTemplateDialogOpen, setIsTemplateDialogOpen] = useState(false);
   const [isAxisDialogOpen, setIsAxisDialogOpen] = useState(false);
   const [isQuestionDialogOpen, setIsQuestionDialogOpen] = useState(false);
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<string | null>(null);
   const [editingAxis, setEditingAxis] = useState<string | null>(null);
   const [editingQuestion, setEditingQuestion] = useState<string | null>(null);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
   const [selectedAxisId, setSelectedAxisId] = useState<string | null>(null);
+  const [importPreview, setImportPreview] = useState<ImportedTemplate | null>(null);
+  const [isImporting, setIsImporting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
 
   const [templateForm, setTemplateForm] = useState({
     name: '',
@@ -81,6 +111,160 @@ export default function KPITemplates() {
   });
 
   const canManage = isAdmin || isSystemAdmin;
+
+  // Handle JSON file import
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const json = JSON.parse(event.target?.result as string);
+        validateAndSetPreview(json);
+      } catch (err) {
+        toast({
+          title: 'خطأ في قراءة الملف',
+          description: 'تأكد من أن الملف بصيغة JSON صحيحة',
+          variant: 'destructive',
+        });
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  const validateAndSetPreview = (json: unknown) => {
+    if (typeof json !== 'object' || json === null) {
+      throw new Error('Invalid JSON structure');
+    }
+
+    const template = json as ImportedTemplate;
+
+    if (!template.name) {
+      toast({ title: 'خطأ', description: 'اسم القالب مطلوب', variant: 'destructive' });
+      return;
+    }
+
+    if (!template.axes || !Array.isArray(template.axes)) {
+      toast({ title: 'خطأ', description: 'المحاور مطلوبة', variant: 'destructive' });
+      return;
+    }
+
+    setImportPreview(template);
+    setIsImportDialogOpen(true);
+  };
+
+  const handleImportConfirm = async () => {
+    if (!importPreview) return;
+    setIsImporting(true);
+
+    try {
+      // Create template
+      const templateResult = await createTemplate.mutateAsync({
+        name: importPreview.name,
+        name_en: importPreview.name_en,
+        description: importPreview.description,
+        description_en: importPreview.description_en,
+        period_type: importPreview.period_type || 'annual',
+      });
+
+      const templateId = templateResult.id;
+
+      // Create axes and questions
+      for (const axis of importPreview.axes) {
+        const axisResult = await createAxis.mutateAsync({
+          template_id: templateId,
+          name: axis.name,
+          name_en: axis.name_en,
+          weight: axis.weight,
+          sort_order: axis.sort_order,
+        });
+
+        const axisId = axisResult.id;
+
+        // Create questions for this axis
+        for (const question of axis.questions || []) {
+          await createQuestion.mutateAsync({
+            axis_id: axisId,
+            question_text: question.question_text,
+            question_text_en: question.question_text_en,
+            answer_type: question.answer_type || 'numeric',
+            choices: question.choices,
+            min_value: question.min_value,
+            max_value: question.max_value,
+            weight: question.weight,
+            sort_order: question.sort_order,
+          });
+        }
+      }
+
+      toast({ title: 'تم الاستيراد بنجاح', description: `تم إنشاء القالب: ${importPreview.name}` });
+      setIsImportDialogOpen(false);
+      setImportPreview(null);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'فشل في استيراد القالب';
+      toast({ title: 'خطأ', description: errorMessage, variant: 'destructive' });
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
+  const downloadSampleTemplate = () => {
+    const sampleTemplate: ImportedTemplate = {
+      name: 'نموذج تقييم الأداء السنوي',
+      name_en: 'Annual Performance Template',
+      description: 'قالب نموذجي لتقييم الأداء السنوي',
+      period_type: 'annual',
+      axes: [
+        {
+          name: 'الإنتاجية والأداء',
+          name_en: 'Productivity',
+          weight: 40,
+          sort_order: 1,
+          questions: [
+            { question_text: 'جودة العمل المنجز', answer_type: 'numeric', min_value: 1, max_value: 5, weight: 30, sort_order: 1 },
+            { question_text: 'الالتزام بالمواعيد النهائية', answer_type: 'numeric', min_value: 1, max_value: 5, weight: 25, sort_order: 2 },
+            { question_text: 'كمية العمل المنجز', answer_type: 'numeric', min_value: 1, max_value: 5, weight: 25, sort_order: 3 },
+            { question_text: 'الدقة في التنفيذ', answer_type: 'numeric', min_value: 1, max_value: 5, weight: 20, sort_order: 4 },
+          ],
+        },
+        {
+          name: 'المهارات والكفاءات',
+          name_en: 'Skills',
+          weight: 35,
+          sort_order: 2,
+          questions: [
+            { question_text: 'المعرفة الفنية', answer_type: 'numeric', min_value: 1, max_value: 5, weight: 25, sort_order: 1 },
+            { question_text: 'مهارات التواصل', answer_type: 'numeric', min_value: 1, max_value: 5, weight: 25, sort_order: 2 },
+            { question_text: 'العمل الجماعي', answer_type: 'numeric', min_value: 1, max_value: 5, weight: 25, sort_order: 3 },
+            { question_text: 'حل المشكلات', answer_type: 'numeric', min_value: 1, max_value: 5, weight: 25, sort_order: 4 },
+          ],
+        },
+        {
+          name: 'السلوك والالتزام',
+          name_en: 'Behavior',
+          weight: 25,
+          sort_order: 3,
+          questions: [
+            { question_text: 'الانضباط في العمل', answer_type: 'numeric', min_value: 1, max_value: 5, weight: 35, sort_order: 1 },
+            { question_text: 'المبادرة والإبداع', answer_type: 'numeric', min_value: 1, max_value: 5, weight: 35, sort_order: 2 },
+            { question_text: 'الالتزام بسياسات المنظمة', answer_type: 'numeric', min_value: 1, max_value: 5, weight: 30, sort_order: 3 },
+          ],
+        },
+      ],
+    };
+
+    const blob = new Blob([JSON.stringify(sampleTemplate, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'kpi-template-sample.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
 
   const handleSaveTemplate = () => {
     if (editingTemplate) {
@@ -165,12 +349,75 @@ export default function KPITemplates() {
           <p className="text-muted-foreground">إنشاء وإدارة قوالب التقييم والمحاور والأسئلة</p>
         </div>
         {canManage && (
-          <Button onClick={() => setIsTemplateDialogOpen(true)}>
-            <Plus className="h-4 w-4 ml-2" />
-            قالب جديد
-          </Button>
+          <div className="flex gap-2">
+            <input
+              type="file"
+              accept=".json"
+              ref={fileInputRef}
+              className="hidden"
+              onChange={handleFileSelect}
+            />
+            <Button variant="outline" onClick={downloadSampleTemplate}>
+              <FileJson className="h-4 w-4 ml-2" />
+              تحميل نموذج
+            </Button>
+            <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
+              <Upload className="h-4 w-4 ml-2" />
+              استيراد JSON
+            </Button>
+            <Button onClick={() => setIsTemplateDialogOpen(true)}>
+              <Plus className="h-4 w-4 ml-2" />
+              قالب جديد
+            </Button>
+          </div>
         )}
       </div>
+
+      {/* Import Preview Dialog */}
+      <Dialog open={isImportDialogOpen} onOpenChange={setIsImportDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Eye className="h-5 w-5" />
+              معاينة القالب المستورد
+            </DialogTitle>
+            <DialogDescription>راجع البيانات قبل الحفظ</DialogDescription>
+          </DialogHeader>
+          {importPreview && (
+            <div className="space-y-4">
+              <div className="p-4 border rounded-lg bg-muted/30">
+                <p className="font-semibold text-lg">{importPreview.name}</p>
+                {importPreview.description && <p className="text-muted-foreground">{importPreview.description}</p>}
+                <Badge className="mt-2">{periodLabels[importPreview.period_type]}</Badge>
+              </div>
+              <div className="space-y-3">
+                <p className="font-medium">المحاور ({importPreview.axes.length}):</p>
+                {importPreview.axes.map((axis, i) => (
+                  <Card key={i}>
+                    <CardHeader className="py-2">
+                      <div className="flex justify-between items-center">
+                        <span className="font-medium">{axis.name}</span>
+                        <Badge variant="outline">{axis.weight}%</Badge>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="py-2">
+                      <p className="text-sm text-muted-foreground">{axis.questions?.length || 0} أسئلة</p>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setIsImportDialogOpen(false); setImportPreview(null); }}>
+              إلغاء
+            </Button>
+            <Button onClick={handleImportConfirm} disabled={isImporting}>
+              {isImporting ? 'جاري الاستيراد...' : 'تأكيد الاستيراد'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {templates.length === 0 ? (
         <Card>
