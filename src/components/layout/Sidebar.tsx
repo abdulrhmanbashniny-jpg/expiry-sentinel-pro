@@ -23,6 +23,8 @@ import { ROLE_LABELS, AppRole } from '@/types/database';
 interface SidebarProps {
   isCollapsed: boolean;
   onToggle: () => void;
+  isMobile?: boolean;
+  onNavigate?: () => void;
 }
 
 interface NavItem {
@@ -46,13 +48,19 @@ const navItems: NavItem[] = [
   { to: '/settings', icon: Settings, label: 'الإعدادات', minRole: 'admin' },
 ];
 
-export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle, isMobile, onNavigate }) => {
   const { signOut, user, role, hasRole } = useAuth();
   const navigate = useNavigate();
 
   const handleSignOut = async () => {
     await signOut();
     navigate('/auth');
+  };
+
+  const handleNavClick = () => {
+    if (onNavigate) {
+      onNavigate();
+    }
   };
 
   const filteredNavItems = navItems.filter(item => {
@@ -63,13 +71,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
   return (
     <aside
       className={cn(
-        'fixed right-0 top-0 z-40 flex h-screen flex-col bg-sidebar transition-all duration-300',
-        isCollapsed ? 'w-20' : 'w-64'
+        'flex h-screen flex-col bg-sidebar transition-all duration-300',
+        isMobile ? 'w-full' : 'fixed right-0 top-0 z-40',
+        !isMobile && (isCollapsed ? 'w-20' : 'w-64')
       )}
     >
       {/* Logo */}
       <div className="flex h-16 items-center justify-between border-b border-sidebar-border px-4">
-        {!isCollapsed && (
+        {(!isCollapsed || isMobile) && (
           <div className="flex items-center gap-2">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-sidebar-primary">
               <Bell className="h-5 w-5 text-sidebar-primary-foreground" />
@@ -80,16 +89,18 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
             </div>
           </div>
         )}
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={onToggle}
-          className="text-sidebar-foreground hover:bg-sidebar-accent"
-        >
-          <ChevronLeft
-            className={cn('h-5 w-5 transition-transform', isCollapsed && 'rotate-180')}
-          />
-        </Button>
+        {!isMobile && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onToggle}
+            className="text-sidebar-foreground hover:bg-sidebar-accent"
+          >
+            <ChevronLeft
+              className={cn('h-5 w-5 transition-transform', isCollapsed && 'rotate-180')}
+            />
+          </Button>
+        )}
       </div>
 
       {/* Navigation */}
@@ -98,23 +109,24 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
           <NavLink
             key={item.to}
             to={item.to}
+            onClick={handleNavClick}
             className={({ isActive }) =>
               cn(
                 'sidebar-item',
                 isActive && 'active',
-                isCollapsed && 'justify-center px-2'
+                !isMobile && isCollapsed && 'justify-center px-2'
               )
             }
           >
             <item.icon className="h-5 w-5 shrink-0" />
-            {!isCollapsed && <span>{item.label}</span>}
+            {(!isCollapsed || isMobile) && <span>{item.label}</span>}
           </NavLink>
         ))}
       </nav>
 
       {/* User section */}
       <div className="border-t border-sidebar-border p-3">
-        {!isCollapsed && (
+        {(!isCollapsed || isMobile) && (
           <div className="mb-3 rounded-lg bg-sidebar-accent/50 p-3">
             <p className="truncate text-sm font-medium text-sidebar-foreground">
               {user?.email}
@@ -129,11 +141,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
           onClick={handleSignOut}
           className={cn(
             'w-full justify-start gap-2 text-sidebar-foreground hover:bg-destructive/20 hover:text-destructive',
-            isCollapsed && 'justify-center px-2'
+            !isMobile && isCollapsed && 'justify-center px-2'
           )}
         >
           <LogOut className="h-5 w-5" />
-          {!isCollapsed && <span>تسجيل الخروج</span>}
+          {(!isCollapsed || isMobile) && <span>تسجيل الخروج</span>}
         </Button>
       </div>
     </aside>

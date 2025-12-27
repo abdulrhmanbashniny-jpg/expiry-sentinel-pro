@@ -539,28 +539,43 @@ export type Database = {
       }
       profiles: {
         Row: {
+          allow_telegram: boolean | null
+          allow_whatsapp: boolean | null
           created_at: string
           email: string | null
+          employee_number: string | null
           full_name: string | null
           id: string
+          national_id: string | null
+          phone: string | null
           telegram_user_id: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
+          allow_telegram?: boolean | null
+          allow_whatsapp?: boolean | null
           created_at?: string
           email?: string | null
+          employee_number?: string | null
           full_name?: string | null
           id?: string
+          national_id?: string | null
+          phone?: string | null
           telegram_user_id?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
+          allow_telegram?: boolean | null
+          allow_whatsapp?: boolean | null
           created_at?: string
           email?: string | null
+          employee_number?: string | null
           full_name?: string | null
           id?: string
+          national_id?: string | null
+          phone?: string | null
           telegram_user_id?: string | null
           updated_at?: string
           user_id?: string
@@ -789,6 +804,13 @@ export type Database = {
       }
       is_supervisor_or_higher: { Args: { _user_id: string }; Returns: boolean }
       is_system_admin: { Args: { _user_id: string }; Returns: boolean }
+      sync_missing_users: {
+        Args: never
+        Returns: {
+          synced_count: number
+          synced_users: string[]
+        }[]
+      }
     }
     Enums: {
       app_role: "admin" | "hr_user" | "system_admin" | "supervisor" | "employee"

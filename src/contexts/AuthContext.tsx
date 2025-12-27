@@ -14,7 +14,13 @@ interface AuthContextType {
   hasRole: (requiredRole: AppRole) => boolean;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
-  signUp: (email: string, password: string, fullName: string) => Promise<{ error: Error | null }>;
+  signUp: (email: string, password: string, fullName: string, additionalData?: {
+    employee_number?: string;
+    national_id?: string;
+    phone?: string;
+    allow_whatsapp?: boolean;
+    allow_telegram?: boolean;
+  }) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
 }
 
@@ -89,7 +95,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return { error };
   };
 
-  const signUp = async (email: string, password: string, fullName: string) => {
+  const signUp = async (
+    email: string, 
+    password: string, 
+    fullName: string,
+    additionalData?: {
+      employee_number?: string;
+      national_id?: string;
+      phone?: string;
+      allow_whatsapp?: boolean;
+      allow_telegram?: boolean;
+    }
+  ) => {
     const redirectUrl = `${window.location.origin}/`;
     
     const { error } = await supabase.auth.signUp({
@@ -99,6 +116,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         emailRedirectTo: redirectUrl,
         data: {
           full_name: fullName,
+          employee_number: additionalData?.employee_number,
+          national_id: additionalData?.national_id,
+          phone: additionalData?.phone,
+          allow_whatsapp: additionalData?.allow_whatsapp || false,
+          allow_telegram: additionalData?.allow_telegram || false,
         },
       },
     });
