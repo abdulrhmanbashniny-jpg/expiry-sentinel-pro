@@ -56,6 +56,7 @@ const navItems: NavItem[] = [
   { to: '/evaluation-review', icon: FileCheck, label: 'مراجعة التقييمات', minRole: 'system_admin' },
   { to: '/my-results', icon: BarChart3, label: 'نتائجي' },
   { to: '/team-management', icon: UsersRound, label: 'إدارة الفريق', minRole: 'system_admin' },
+  { to: '/user-management', icon: Users, label: 'إدارة المستخدمين', minRole: 'admin' },
   { to: '/user-import', icon: Upload, label: 'استيراد المستخدمين', minRole: 'system_admin' },
   { to: '/integrations', icon: Link2, label: 'التكاملات', minRole: 'system_admin' },
   { to: '/security', icon: Shield, label: 'الأمان', minRole: 'system_admin' },

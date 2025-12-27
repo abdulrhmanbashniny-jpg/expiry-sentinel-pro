@@ -29,6 +29,8 @@ import Evaluations from "./pages/Evaluations";
 import UserImport from "./pages/UserImport";
 import EvaluationReview from "./pages/EvaluationReview";
 import MyResults from "./pages/MyResults";
+import EvaluationForm from "./pages/EvaluationForm";
+import UserManagement from "./pages/UserManagement";
 import NotFound from "./pages/NotFound";
 import { Loader2 } from "lucide-react";
 
@@ -87,6 +89,8 @@ const AppRoutes = () => {
         <Route path="evaluations" element={<Evaluations />} />
         <Route path="evaluation-review" element={<EvaluationReview />} />
         <Route path="my-results" element={<MyResults />} />
+        <Route path="evaluation/:evaluationId" element={<EvaluationForm />} />
+        <Route path="user-management" element={<UserManagement />} />
         <Route path="user-import" element={<UserImport />} />
       </Route>
       <Route path="*" element={<NotFound />} />

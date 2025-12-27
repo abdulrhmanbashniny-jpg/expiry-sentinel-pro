@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEvaluations, EvaluationType } from '@/hooks/useEvaluations';
 import { useKPITemplates } from '@/hooks/useKPITemplates';
@@ -42,6 +43,7 @@ const evaluationTypeLabels: Record<EvaluationType, string> = {
 };
 
 export default function Evaluations() {
+  const navigate = useNavigate();
   const { user, isAdmin, isSystemAdmin, isSupervisor } = useAuth();
   const { cycles, evaluations, createCycle, createEvaluation, isLoading } = useEvaluations();
   const { templates } = useKPITemplates();
@@ -135,9 +137,11 @@ export default function Evaluations() {
       evaluation_type: getEvaluationType(),
       is_proxy: evalForm.is_proxy,
     }, {
-      onSuccess: () => {
+      onSuccess: (data) => {
         setIsEvalDialogOpen(false);
         setEvalForm({ evaluatee_id: '', evaluation_type: 'supervisor_to_employee', is_proxy: false });
+        // Navigate to evaluation form
+        navigate(`/evaluation/${data.id}`);
       },
     });
   };
