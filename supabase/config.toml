@@ -68,3 +68,6 @@ verify_jwt = true
 
 [functions.login-with-identifier]
 verify_jwt = false
+
+[functions.export-database]
+verify_jwt = true
