@@ -173,7 +173,7 @@ async function testTelegram(config: Record<string, any>): Promise<{ success: boo
     const testMessage = `✅ اختبار اتصال ناجح!
     
 🤖 Bot: @${botResult.result.username}
-📅 التاريخ: ${new Date().toLocaleString('ar-SA')}
+📅 التاريخ: ${new Date().toISOString().replace('T', ' ').slice(0, 19)}
 
 HR Expiry Reminder System`;
 

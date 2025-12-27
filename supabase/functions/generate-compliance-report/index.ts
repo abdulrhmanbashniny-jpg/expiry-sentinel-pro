@@ -70,11 +70,15 @@ serve(async (req) => {
     let periodEnd = new Date(now);
     let reportTitle: string;
     
+    // Helper to format dates in Gregorian (yyyy-MM-dd)
+    const formatDateGregorian = (d: Date) => d.toISOString().split('T')[0];
+    const formatMonthYearGregorian = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    
     switch (report_type) {
       case 'weekly':
         periodStart = new Date(now);
         periodStart.setDate(periodStart.getDate() - 7);
-        reportTitle = `التقرير الأسبوعي - ${periodStart.toLocaleDateString('ar-SA')} إلى ${periodEnd.toLocaleDateString('ar-SA')}`;
+        reportTitle = `التقرير الأسبوعي - ${formatDateGregorian(periodStart)} إلى ${formatDateGregorian(periodEnd)}`;
         break;
       case 'yearly':
         periodStart = new Date(now.getFullYear(), 0, 1);
@@ -83,7 +87,7 @@ serve(async (req) => {
       case 'monthly':
       default:
         periodStart = new Date(now.getFullYear(), now.getMonth(), 1);
-        reportTitle = `التقرير الشهري - ${now.toLocaleDateString('ar-SA', { month: 'long', year: 'numeric' })}`;
+        reportTitle = `التقرير الشهري - ${formatMonthYearGregorian(now)}`;
         break;
     }
     

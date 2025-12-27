@@ -263,7 +263,7 @@ ${data.slice(0, 5).map((i: any) => `• ${i.ref_number}: ${i.title} (${i.expiry_
         const late = data?.filter((i: any) => i.status === 'expired').length || 0;
         
         results.push({
-          month: startOfMonth.toLocaleDateString('ar-SA', { month: 'long', year: 'numeric' }),
+          month: `${startOfMonth.getFullYear()}-${String(startOfMonth.getMonth() + 1).padStart(2, '0')}`,
           total,
           late
         });

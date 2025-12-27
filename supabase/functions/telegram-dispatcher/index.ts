@@ -499,8 +499,9 @@ async function handleCallback(
       if (!logs?.length) return { reply_text: 'لا يوجد سجل زمني لهذه المعاملة' };
       
       const timelineText = logs.map((log: any) => {
-        const date = new Date(log.changed_at).toLocaleDateString('ar-SA');
-        const time = new Date(log.changed_at).toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' });
+        const d = new Date(log.changed_at);
+        const date = d.toISOString().split('T')[0];
+        const time = d.toTimeString().slice(0, 5);
         const oldLabel = log.old_status ? STATUS_LABELS[log.old_status as WorkflowStatus] || log.old_status : 'إنشاء';
         const newLabel = STATUS_LABELS[log.new_status as WorkflowStatus] || log.new_status;
         const channel = log.channel === 'telegram' ? '📱' : '🌐';
