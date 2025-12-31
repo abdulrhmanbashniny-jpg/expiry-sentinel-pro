@@ -32,6 +32,7 @@ import MyResults from "./pages/MyResults";
 import EvaluationForm from "./pages/EvaluationForm";
 import UserManagement from "./pages/UserManagement";
 import DatabaseExport from "./pages/DatabaseExport";
+import MessageTemplates from "./pages/MessageTemplates";
 import NotFound from "./pages/NotFound";
 import { Loader2 } from "lucide-react";
 
@@ -94,6 +95,7 @@ const AppRoutes = () => {
         <Route path="user-management" element={<UserManagement />} />
         <Route path="user-import" element={<UserImport />} />
         <Route path="database-export" element={<DatabaseExport />} />
+        <Route path="message-templates" element={<MessageTemplates />} />
       </Route>
       <Route path="*" element={<NotFound />} />
     </Routes>

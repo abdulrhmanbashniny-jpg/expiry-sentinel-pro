@@ -21,6 +21,7 @@ import {
   Target,
   Upload,
   FileCheck,
+  MessageSquareText,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -48,6 +49,7 @@ const navItems: NavItem[] = [
   { to: '/categories', icon: FolderOpen, label: 'الفئات', minRole: 'admin' },
   { to: '/departments', icon: Building2, label: 'الأقسام', minRole: 'admin' },
   { to: '/reminder-rules', icon: Bell, label: 'قواعد التذكير', minRole: 'admin' },
+  { to: '/message-templates', icon: MessageSquareText, label: 'قوالب الرسائل', minRole: 'admin' },
   { to: '/ai-advisor', icon: Bot, label: 'مستشار الامتثال', minRole: 'admin' },
   { to: '/compliance-reports', icon: BarChart3, label: 'تقارير الالتزام', minRole: 'admin' },
   { to: '/delegations', icon: UserCheck, label: 'التوكيلات' },
