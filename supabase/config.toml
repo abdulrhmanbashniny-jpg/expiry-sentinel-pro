@@ -71,3 +71,6 @@ verify_jwt = false
 
 [functions.export-database]
 verify_jwt = true
+
+[functions.automated-reminders]
+verify_jwt = false
