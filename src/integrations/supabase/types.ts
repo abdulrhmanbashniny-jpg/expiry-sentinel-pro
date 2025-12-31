@@ -898,6 +898,7 @@ export type Database = {
           created_at: string
           created_by_user_id: string | null
           department_id: string | null
+          dynamic_fields: Json | null
           expiry_date: string
           expiry_time: string | null
           id: string
@@ -919,6 +920,7 @@ export type Database = {
           created_at?: string
           created_by_user_id?: string | null
           department_id?: string | null
+          dynamic_fields?: Json | null
           expiry_date: string
           expiry_time?: string | null
           id?: string
@@ -940,6 +942,7 @@ export type Database = {
           created_at?: string
           created_by_user_id?: string | null
           department_id?: string | null
+          dynamic_fields?: Json | null
           expiry_date?: string
           expiry_time?: string | null
           id?: string
@@ -1137,6 +1140,63 @@ export type Database = {
           success?: boolean
           user_agent?: string | null
           user_id?: string
+        }
+        Relationships: []
+      }
+      message_templates: {
+        Row: {
+          channel: string
+          created_at: string
+          created_by: string | null
+          description: string | null
+          dynamic_field_keys: string[] | null
+          id: string
+          is_active: boolean
+          is_default: boolean
+          name: string
+          name_en: string | null
+          optional_fields: string[] | null
+          placeholders: Json | null
+          required_fields: string[] | null
+          template_text: string
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          channel?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          dynamic_field_keys?: string[] | null
+          id?: string
+          is_active?: boolean
+          is_default?: boolean
+          name: string
+          name_en?: string | null
+          optional_fields?: string[] | null
+          placeholders?: Json | null
+          required_fields?: string[] | null
+          template_text: string
+          updated_at?: string
+          version?: number
+        }
+        Update: {
+          channel?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          dynamic_field_keys?: string[] | null
+          id?: string
+          is_active?: boolean
+          is_default?: boolean
+          name?: string
+          name_en?: string | null
+          optional_fields?: string[] | null
+          placeholders?: Json | null
+          required_fields?: string[] | null
+          template_text?: string
+          updated_at?: string
+          version?: number
         }
         Relationships: []
       }
