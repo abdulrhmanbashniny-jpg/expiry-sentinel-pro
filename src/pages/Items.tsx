@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Search, FileText, Trash2, Edit, Archive, Bell } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useItems } from '@/hooks/useItems';
 import { useCategories } from '@/hooks/useCategories';
+import { useDepartments } from '@/hooks/useDepartments';
 import { format } from 'date-fns';
 import { ItemStatus } from '@/types/database';
 import { WorkflowStatus, WORKFLOW_STATUS_LABELS } from '@/hooks/useDashboardData';
@@ -20,11 +21,25 @@ const Items: React.FC = () => {
   const navigate = useNavigate();
   const { items, isLoading, updateItem, deleteItem } = useItems();
   const { categories } = useCategories();
+  const { departments } = useDepartments();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [departmentFilter, setDepartmentFilter] = useState<string>('all');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [workflowFilter, setWorkflowFilter] = useState<string>('active');
   const [bulkReminderOpen, setBulkReminderOpen] = useState(false);
+
+  // Sequential filtering: Department → Category → Items
+  const filteredCategories = useMemo(() => {
+    if (departmentFilter === 'all') return categories;
+    return categories.filter(cat => cat.department_id === departmentFilter);
+  }, [categories, departmentFilter]);
+
+  // Reset category filter when department changes
+  const handleDepartmentChange = (value: string) => {
+    setDepartmentFilter(value);
+    setCategoryFilter('all'); // Reset category when department changes
+  };
 
   // Filter items based on workflow tab
   const getFilteredByWorkflow = () => {
@@ -40,8 +55,9 @@ const Items: React.FC = () => {
       item.responsible_person?.toLowerCase().includes(search.toLowerCase()) ||
       item.ref_number?.toLowerCase().includes(search.toLowerCase());
     const matchesStatus = statusFilter === 'all' || item.status === statusFilter;
+    const matchesDepartment = departmentFilter === 'all' || (item as any).department_id === departmentFilter;
     const matchesCategory = categoryFilter === 'all' || item.category_id === categoryFilter;
-    return matchesSearch && matchesStatus && matchesCategory;
+    return matchesSearch && matchesStatus && matchesDepartment && matchesCategory;
   });
 
   const getStatusBadge = (status: ItemStatus, expiryDate: string) => {
@@ -104,7 +120,7 @@ const Items: React.FC = () => {
         </TabsList>
       </Tabs>
 
-      {/* Filters */}
+      {/* Filters - Sequential: Department → Category → Items */}
       <Card>
         <CardContent className="flex flex-wrap gap-4 p-4">
           <div className="relative flex-1 min-w-[200px]">
@@ -116,6 +132,28 @@ const Items: React.FC = () => {
               className="pr-10"
             />
           </div>
+          <Select value={departmentFilter} onValueChange={handleDepartmentChange}>
+            <SelectTrigger className="w-[150px]">
+              <SelectValue placeholder="القسم" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">جميع الأقسام</SelectItem>
+              {departments.map((dept) => (
+                <SelectItem key={dept.id} value={dept.id}>{dept.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+            <SelectTrigger className="w-[150px]">
+              <SelectValue placeholder="الفئة" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">جميع الفئات</SelectItem>
+              {filteredCategories.map((cat) => (
+                <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="w-[150px]">
               <SelectValue placeholder="الحالة" />
@@ -125,17 +163,6 @@ const Items: React.FC = () => {
               <SelectItem value="active">نشط</SelectItem>
               <SelectItem value="expired">منتهي</SelectItem>
               <SelectItem value="archived">مؤرشف</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-            <SelectTrigger className="w-[150px]">
-              <SelectValue placeholder="الفئة" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">جميع الفئات</SelectItem>
-              {categories.map((cat) => (
-                <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
-              ))}
             </SelectContent>
           </Select>
         </CardContent>

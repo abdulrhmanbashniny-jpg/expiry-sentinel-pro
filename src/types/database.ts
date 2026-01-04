@@ -31,6 +31,8 @@ export interface Category {
   name: string;
   code: string | null;
   description: string | null;
+  department_id: string | null;
+  risk_level: string | null;
   created_at: string;
 }
 
