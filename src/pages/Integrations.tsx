@@ -190,14 +190,17 @@ export default function Integrations() {
           <p className="text-xs text-muted-foreground">اترك فارغًا للاحتفاظ بالقيمة الحالية</p>
         </div>
         <div className="space-y-2">
-          <Label htmlFor="whatsapp-phone">Sender ID / Phone Number</Label>
+          <Label htmlFor="whatsapp-instance">Instance Name (اسم الجلسة في AppsLink)</Label>
           <Input
-            id="whatsapp-phone"
-            placeholder="966512345678"
-            value={config.phone_number_id || ''}
-            onChange={(e) => handleConfigChange('whatsapp', 'phone_number_id', e.target.value)}
+            id="whatsapp-instance"
+            placeholder="evolution أو main أو اسم الـ instance"
+            value={config.instance_name || ''}
+            onChange={(e) => handleConfigChange('whatsapp', 'instance_name', e.target.value)}
             dir="ltr"
           />
+          <p className="text-xs text-muted-foreground">
+            اسم الـ Instance/Session من AppsLink Dashboard (ليس رقم الهاتف)
+          </p>
         </div>
         
         <div className="space-y-2">
