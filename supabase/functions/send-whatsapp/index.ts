@@ -91,7 +91,7 @@ serve(async (req) => {
     const config = integration.config as Record<string, any>;
     const apiBaseUrl = config.api_base_url;
     const accessToken = config.access_token;
-    const phoneNumberId = config.phone_number_id;
+    const instanceName = config.instance_name || config.phone_number_id || 'evolution';
 
     // Handle status check
     if (action === 'check') {
@@ -129,30 +129,41 @@ serve(async (req) => {
       );
     }
 
-    // Format phone number (remove + and spaces)
-    const formattedPhone = phone.replace(/[\s+\-]/g, '');
+    // Format phone number (remove + and spaces, keep only digits)
+    const formattedPhone = phone.replace(/[\s+\-()]/g, '');
 
-    // Send message via AppsLink API
-    // AppsLink API structure (adjust based on their actual API documentation)
-    const sendUrl = `${apiBaseUrl.replace(/\/$/, '')}/messages/send`;
+    // Send message via Evolution API (AppsLink uses Evolution API)
+    // Endpoint: POST /message/sendText/{instance}
+    const baseUrl = apiBaseUrl.replace(/\/api\/v1\/?$/, '').replace(/\/$/, '');
+    const sendUrl = `${baseUrl}/message/sendText/${instanceName}`;
+    
+    console.log('Sending to Evolution API:', { sendUrl, phone: formattedPhone, instance: instanceName });
     
     const response = await fetch(sendUrl, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${accessToken}`,
+        'apikey': accessToken,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        to: formattedPhone,
-        message: message,
-        sender_id: phoneNumberId || undefined,
+        number: formattedPhone,
+        text: message,
       }),
     });
 
-    const result = await response.json();
+    const responseText = await response.text();
+    let result: any;
+    
+    try {
+      result = JSON.parse(responseText);
+    } catch {
+      result = { raw: responseText };
+    }
+
+    console.log('Evolution API response:', { status: response.status, result });
 
     if (!response.ok) {
-      console.error('AppsLink API error:', result);
+      console.error('Evolution API error:', result);
       
       // Log failed notification
       if (item_id && recipient_id) {
@@ -162,14 +173,14 @@ serve(async (req) => {
           reminder_day: 0,
           scheduled_for: new Date().toISOString(),
           status: 'failed',
-          error_message: result.message || JSON.stringify(result),
+          error_message: result.message || result.error || JSON.stringify(result),
         });
       }
 
       return new Response(
         JSON.stringify({ 
           success: false, 
-          error: result.message || 'فشل إرسال الرسالة',
+          error: result.message || result.error || 'فشل إرسال الرسالة',
           code: 'SEND_FAILED',
           details: result
         }),
@@ -177,7 +188,11 @@ serve(async (req) => {
       );
     }
 
-    console.log('WhatsApp message sent successfully:', result);
+    // Extract message ID from Evolution API response
+    // Evolution API returns: { key: { remoteJid: "...", id: "MESSAGE_ID" }, status: "PENDING" }
+    const messageId = result?.key?.id || result?.message_id || result?.id;
+    
+    console.log('WhatsApp message sent successfully:', { messageId, result });
 
     // Log successful notification
     if (item_id && recipient_id) {
@@ -188,15 +203,16 @@ serve(async (req) => {
         scheduled_for: new Date().toISOString(),
         sent_at: new Date().toISOString(),
         status: 'sent',
-        provider_message_id: result.message_id || result.id,
+        provider_message_id: messageId,
       });
     }
 
     return new Response(
       JSON.stringify({
         success: true,
-        message_id: result.message_id || result.id,
+        message_id: messageId,
         phone: formattedPhone,
+        raw_response: result,
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
