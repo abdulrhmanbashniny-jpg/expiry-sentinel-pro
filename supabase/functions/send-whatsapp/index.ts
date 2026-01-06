@@ -134,11 +134,17 @@ serve(async (req) => {
 
     // Send message via Evolution API (AppsLink uses Evolution API)
     // Endpoint: POST /message/sendText/{instance}
-    const baseUrl = apiBaseUrl.replace(/\/api\/v1\/?$/, '').replace(/\/$/, '');
+    // Remove /api/v1 suffix if present, as Evolution API doesn't use it
+    const baseUrl = apiBaseUrl
+      .replace(/\/api\/v1\/?$/, '')
+      .replace(/\/api\/?$/, '')
+      .replace(/\/$/, '');
     const sendUrl = `${baseUrl}/message/sendText/${instanceName}`;
     
     console.log('Sending to Evolution API:', { sendUrl, phone: formattedPhone, instance: instanceName });
     
+    // Evolution API v2 format (flat text field)
+    // Also try v1 format with textMessage wrapper if v2 fails
     const response = await fetch(sendUrl, {
       method: 'POST',
       headers: {
