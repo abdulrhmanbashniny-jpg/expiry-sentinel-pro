@@ -33,6 +33,7 @@ import EvaluationForm from "./pages/EvaluationForm";
 import UserManagement from "./pages/UserManagement";
 import DatabaseExport from "./pages/DatabaseExport";
 import MessageTemplates from "./pages/MessageTemplates";
+import DynamicFields from "./pages/DynamicFields";
 import NotFound from "./pages/NotFound";
 import { Loader2 } from "lucide-react";
 
@@ -96,6 +97,7 @@ const AppRoutes = () => {
         <Route path="user-import" element={<UserImport />} />
         <Route path="database-export" element={<DatabaseExport />} />
         <Route path="message-templates" element={<MessageTemplates />} />
+        <Route path="dynamic-fields" element={<DynamicFields />} />
       </Route>
       <Route path="*" element={<NotFound />} />
     </Routes>

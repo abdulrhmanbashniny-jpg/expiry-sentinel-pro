@@ -441,6 +441,60 @@ export type Database = {
         }
         Relationships: []
       }
+      dynamic_field_definitions: {
+        Row: {
+          category_id: string | null
+          created_at: string
+          department_id: string | null
+          field_key: string
+          field_label: string
+          field_options: Json | null
+          field_type: string
+          id: string
+          is_required: boolean
+          sort_order: number
+        }
+        Insert: {
+          category_id?: string | null
+          created_at?: string
+          department_id?: string | null
+          field_key: string
+          field_label: string
+          field_options?: Json | null
+          field_type?: string
+          id?: string
+          is_required?: boolean
+          sort_order?: number
+        }
+        Update: {
+          category_id?: string | null
+          created_at?: string
+          department_id?: string | null
+          field_key?: string
+          field_label?: string
+          field_options?: Json | null
+          field_type?: string
+          id?: string
+          is_required?: boolean
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dynamic_field_definitions_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dynamic_field_definitions_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       evaluation_answers: {
         Row: {
           choice_value: string | null
