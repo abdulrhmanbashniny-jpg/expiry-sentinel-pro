@@ -129,22 +129,56 @@ serve(async (req) => {
       );
     }
 
-    // Format phone number (remove + and spaces, keep only digits)
-    const formattedPhone = phone.replace(/[\s+\-()]/g, '');
+    // Validate phone format: only accept +966XXXXXXXXX or 966XXXXXXXXX
+    const phoneDigits = phone.replace(/[\s+\-()]/g, '');
+    
+    // Reject invalid formats (059..., 00966...)
+    if (phoneDigits.startsWith('05') || phoneDigits.startsWith('00')) {
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'صيغة رقم الجوال غير صحيحة. استخدم الصيغة: +966XXXXXXXXX أو 966XXXXXXXXX',
+          code: 'INVALID_PHONE_FORMAT'
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
+    // Ensure phone starts with 966
+    if (!phoneDigits.startsWith('966')) {
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'رقم الجوال يجب أن يبدأ بـ 966',
+          code: 'INVALID_PHONE_FORMAT'
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
-    // Send message via Evolution API (AppsLink uses Evolution API)
-    // Endpoint: POST /message/sendText/{instance}
-    // Remove /api/v1 suffix if present, as Evolution API doesn't use it
-    const baseUrl = apiBaseUrl
-      .replace(/\/api\/v1\/?$/, '')
-      .replace(/\/api\/?$/, '')
-      .replace(/\/$/, '');
+    // Format as JID for WhatsApp: {digits}@s.whatsapp.net
+    const formattedPhone = `${phoneDigits}@s.whatsapp.net`;
+
+    // Validate api_base_url format
+    if (!apiBaseUrl.startsWith('http://') && !apiBaseUrl.startsWith('https://')) {
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'عنوان API غير صالح. يجب أن يبدأ بـ http:// أو https://',
+          code: 'INVALID_API_URL'
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Build URL: {api_base_url}/message/sendText/{instance_name}
+    const baseUrl = apiBaseUrl.replace(/\/$/, '');
     const sendUrl = `${baseUrl}/message/sendText/${instanceName}`;
     
-    console.log('Sending to Evolution API:', { sendUrl, phone: formattedPhone, instance: instanceName });
+    console.log('Sending to WhatsApp API:', { sendUrl, phone: phoneDigits, instance: instanceName });
     
-    // Evolution API v2 format (flat text field)
-    // Also try v1 format with textMessage wrapper if v2 fails
+    // Request format per requirements:
+    // Body: { "number": "966XXXXXXXXX@s.whatsapp.net", "textMessage": { "text": "..." } }
     const response = await fetch(sendUrl, {
       method: 'POST',
       headers: {
@@ -153,7 +187,7 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         number: formattedPhone,
-        text: message,
+        textMessage: { text: message },
       }),
     });
 

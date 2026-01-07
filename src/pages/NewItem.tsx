@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -17,18 +17,20 @@ import { useRecipients } from '@/hooks/useRecipients';
 import { useReminderRules } from '@/hooks/useReminderRules';
 import { useDepartments } from '@/hooks/useDepartments';
 import { useTeamManagement } from '@/hooks/useTeamManagement';
+import { useAuth } from '@/contexts/AuthContext';
 import { CalendarIcon, ArrowRight, Loader2, Clock, AlertTriangle, Building2, User, Users } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 
 const NewItem: React.FC = () => {
   const navigate = useNavigate();
+  const { user, role, isEmployee, isSupervisor } = useAuth();
   const { createItem } = useItems();
   const { categories } = useCategories();
   const { recipients } = useRecipients();
   const { rules } = useReminderRules();
   const { departments, isLoading: departmentsLoading } = useDepartments();
-  const { users, departmentScopes } = useTeamManagement();
+  const { users, teamMembers, departmentScopes } = useTeamManagement();
 
   const [formData, setFormData] = useState({
     title: '',
@@ -38,12 +40,31 @@ const NewItem: React.FC = () => {
     department_id: '',
     owner_department: '',
     responsible_person: '',
-    responsible_user_id: '', // New: user ID for responsible person
+    responsible_user_id: '',
     notes: '',
     reminder_rule_id: '',
+    dynamic_fields: {} as Record<string, string>,
   });
   const [selectedRecipients, setSelectedRecipients] = useState<string[]>([]);
   const [validationError, setValidationError] = useState<string | null>(null);
+
+  // Filter departments based on user's scope (users only see their assigned departments)
+  const userDepartments = useMemo(() => {
+    if (!user) return departments;
+    
+    // Get department IDs the user has access to
+    const userDeptIds = departmentScopes
+      .filter(scope => scope.user_id === user.id)
+      .map(scope => scope.department_id);
+    
+    // If user has no scopes, show all (for admins) or none
+    if (userDeptIds.length === 0) {
+      // Admins see all
+      return departments;
+    }
+    
+    return departments.filter(d => userDeptIds.includes(d.id));
+  }, [user, departments, departmentScopes]);
 
   // Filter categories based on selected department
   const filteredCategories = formData.department_id 
@@ -57,7 +78,6 @@ const NewItem: React.FC = () => {
   const getDepartmentUsers = () => {
     if (!formData.department_id) return [];
     
-    // Get user IDs that belong to this department
     const deptUserIds = departmentScopes
       .filter(scope => scope.department_id === formData.department_id)
       .map(scope => scope.user_id);
@@ -69,6 +89,45 @@ const NewItem: React.FC = () => {
 
   // Filter recipients based on selected department
   const filteredRecipients = recipients.filter(r => r.is_active);
+
+  // Auto-assign responsible person based on user role
+  const getAutoAssignedResponsible = () => {
+    if (!user) return null;
+    
+    // If employee → assign to their supervisor
+    if (isEmployee) {
+      const teamRelation = teamMembers.find(tm => tm.employee_id === user.id);
+      if (teamRelation) {
+        const supervisor = users.find(u => u.profile.user_id === teamRelation.supervisor_id);
+        return supervisor;
+      }
+    }
+    
+    // If supervisor → assign to department manager
+    if (isSupervisor && formData.department_id) {
+      const dept = departments.find(d => d.id === formData.department_id);
+      if (dept?.manager_user_id) {
+        const manager = users.find(u => u.profile.user_id === dept.manager_user_id);
+        return manager;
+      }
+    }
+    
+    return null;
+  };
+
+  // Auto-set responsible when department changes or on initial load
+  useEffect(() => {
+    if (!formData.responsible_user_id) {
+      const autoAssigned = getAutoAssignedResponsible();
+      if (autoAssigned) {
+        setFormData(prev => ({
+          ...prev,
+          responsible_user_id: autoAssigned.profile.user_id,
+          responsible_person: (autoAssigned.profile as any).full_name || ''
+        }));
+      }
+    }
+  }, [formData.department_id, user, teamMembers, departments]);
 
   // When responsible person changes, auto-add them as recipient
   useEffect(() => {
@@ -180,7 +239,7 @@ const NewItem: React.FC = () => {
                 />
               </div>
 
-              {/* Department Selection - Required */}
+              {/* Department Selection - Required (filtered by user scope) */}
               <div className="space-y-2">
                 <Label className="flex items-center gap-2">
                   <Building2 className="h-4 w-4" />
@@ -188,21 +247,21 @@ const NewItem: React.FC = () => {
                 </Label>
                 <Select 
                   value={formData.department_id} 
-                  onValueChange={(v) => setFormData({ ...formData, department_id: v })}
+                  onValueChange={(v) => setFormData({ ...formData, department_id: v, responsible_user_id: '', responsible_person: '' })}
                 >
                   <SelectTrigger className={cn(!formData.department_id && "border-destructive")}>
                     <SelectValue placeholder={departmentsLoading ? "جاري التحميل..." : "اختر القسم"} />
                   </SelectTrigger>
                   <SelectContent>
-                    {departments.map((dept) => (
+                    {userDepartments.map((dept) => (
                       <SelectItem key={dept.id} value={dept.id}>
                         {dept.name} {dept.code && `(${dept.code})`}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-                {departments.length === 0 && !departmentsLoading && (
-                  <p className="text-sm text-destructive">لا توجد أقسام. يرجى إنشاء قسم أولاً.</p>
+                {userDepartments.length === 0 && !departmentsLoading && (
+                  <p className="text-sm text-destructive">لا توجد أقسام ضمن نطاقك. تواصل مع المسؤول.</p>
                 )}
               </div>
 
@@ -262,24 +321,37 @@ const NewItem: React.FC = () => {
                 </div>
               </div>
 
-              {/* Responsible Person - From Department Users */}
+              {/* Responsible Person - Auto-assigned based on role, with manual override */}
               <div className="space-y-2">
                 <Label className="flex items-center gap-2">
                   <User className="h-4 w-4" />
                   المسؤول
+                  {formData.responsible_user_id && getAutoAssignedResponsible()?.profile.user_id === formData.responsible_user_id && (
+                    <Badge variant="secondary" className="text-xs">تعيين تلقائي</Badge>
+                  )}
                 </Label>
                 {formData.department_id && departmentUsers.length > 0 ? (
                   <Select 
                     value={formData.responsible_user_id} 
-                    onValueChange={(v) => setFormData({ ...formData, responsible_user_id: v })}
+                    onValueChange={(v) => {
+                      const selectedUser = users.find(u => u.profile.user_id === v);
+                      setFormData({ 
+                        ...formData, 
+                        responsible_user_id: v,
+                        responsible_person: (selectedUser?.profile as any)?.full_name || ''
+                      });
+                    }}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="اختر المسؤول من القسم" />
                     </SelectTrigger>
                     <SelectContent>
-                      {departmentUsers.map((user) => (
-                        <SelectItem key={user.profile.user_id} value={user.profile.user_id}>
-                          {(user.profile as any).full_name || (user.profile as any).email}
+                      {departmentUsers.map((u) => (
+                        <SelectItem key={u.profile.user_id} value={u.profile.user_id}>
+                          {(u.profile as any).full_name || (u.profile as any).email}
+                          {getAutoAssignedResponsible()?.profile.user_id === u.profile.user_id && (
+                            <span className="text-muted-foreground mr-2">(مقترح)</span>
+                          )}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -290,6 +362,12 @@ const NewItem: React.FC = () => {
                     onChange={(e) => setFormData({ ...formData, responsible_person: e.target.value })} 
                     placeholder={formData.department_id ? "لا يوجد مستخدمين في القسم" : "اختر القسم أولاً"}
                   />
+                )}
+                {isEmployee && (
+                  <p className="text-xs text-muted-foreground">سيتم تعيين مشرفك المباشر تلقائياً</p>
+                )}
+                {isSupervisor && (
+                  <p className="text-xs text-muted-foreground">سيتم تعيين مدير القسم تلقائياً</p>
                 )}
               </div>
 

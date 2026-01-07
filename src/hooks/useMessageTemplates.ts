@@ -25,22 +25,44 @@ export interface MessageTemplate {
   updated_at: string;
 }
 
-// المتغيرات المتاحة للقوالب
+// المتغيرات المتاحة للقوالب - محدثة حسب المتطلبات
 export const AVAILABLE_PLACEHOLDERS = [
-  { key: 'item_title', label: 'عنوان المعاملة', required: true },
-  { key: 'ref_number', label: 'الرقم المرجعي', required: true },
+  { key: 'item_code', label: 'كود العنصر (ref_number)', required: true },
+  { key: 'serial_no', label: 'الرقم التسلسلي', required: false },
+  { key: 'title', label: 'عنوان المعاملة', required: true },
+  { key: 'category', label: 'الفئة', required: false },
+  { key: 'work_status', label: 'حالة العمل (workflow_status)', required: false },
+  { key: 'due_date', label: 'تاريخ الاستحقاق', required: true },
+  { key: 'assignee', label: 'المسؤول', required: false },
+  { key: 'validity_status', label: 'حالة الصلاحية', required: false },
+  { key: 'remaining_text', label: 'النص المتبقي (أيام)', required: true },
+  { key: 'item_url', label: 'رابط المعاملة (قابل للنقر)', required: true },
+  // Backward compatibility
+  { key: 'item_title', label: 'عنوان المعاملة (قديم)', required: false },
+  { key: 'ref_number', label: 'الرقم المرجعي (قديم)', required: false },
   { key: 'department_name', label: 'اسم القسم', required: false },
-  { key: 'category_name', label: 'اسم الفئة', required: false },
-  { key: 'expiry_date', label: 'تاريخ الانتهاء', required: true },
-  { key: 'days_left', label: 'الأيام المتبقية', required: true },
+  { key: 'category_name', label: 'اسم الفئة (قديم)', required: false },
+  { key: 'expiry_date', label: 'تاريخ الانتهاء (قديم)', required: false },
+  { key: 'days_left', label: 'الأيام المتبقية (قديم)', required: false },
   { key: 'creator_note', label: 'ملاحظة المنشئ', required: false },
-  { key: 'item_url', label: 'رابط المعاملة', required: false },
-  { key: 'responsible_person', label: 'المسؤول', required: false },
+  { key: 'responsible_person', label: 'المسؤول (قديم)', required: false },
   { key: 'recipient_name', label: 'اسم المستلم', required: false },
 ];
 
 // بيانات مرجعية للذكاء الصناعي
 export const REFERENCE_PAYLOAD = {
+  // New placeholders
+  item_code: "LIC-2025-0042",
+  serial_no: "SN-00123",
+  title: "تجديد رخصة البلدية",
+  category: "التراخيص",
+  work_status: "in_progress",
+  due_date: "2025-02-15",
+  assignee: "أحمد محمد",
+  validity_status: "active",
+  remaining_text: "7 أيام متبقية",
+  item_url: "https://example.com/items/123",
+  // Backward compatibility
   item_title: "تجديد رخصة البلدية",
   ref_number: "LIC-2025-0042",
   department_name: "الشؤون الإدارية",
@@ -48,7 +70,6 @@ export const REFERENCE_PAYLOAD = {
   expiry_date: "2025-02-15",
   days_left: 7,
   creator_note: "يرجى التجديد قبل انتهاء المهلة",
-  item_url: "https://example.com/items/123",
   responsible_person: "أحمد محمد",
   recipient_name: "خالد عبدالله",
   dynamic_fields: {
