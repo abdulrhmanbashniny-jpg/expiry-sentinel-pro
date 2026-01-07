@@ -17,8 +17,9 @@ import { useRecipients } from '@/hooks/useRecipients';
 import { useReminderRules } from '@/hooks/useReminderRules';
 import { useDepartments } from '@/hooks/useDepartments';
 import { useTeamManagement } from '@/hooks/useTeamManagement';
+import { useDynamicFields } from '@/hooks/useDynamicFields';
 import { useAuth } from '@/contexts/AuthContext';
-import { CalendarIcon, ArrowRight, Loader2, Clock, AlertTriangle, Building2, User, Users } from 'lucide-react';
+import { CalendarIcon, ArrowRight, Loader2, Clock, AlertTriangle, Building2, User, Users, ListPlus } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 
@@ -47,6 +48,9 @@ const NewItem: React.FC = () => {
   });
   const [selectedRecipients, setSelectedRecipients] = useState<string[]>([]);
   const [validationError, setValidationError] = useState<string | null>(null);
+
+  // Dynamic fields based on selected department + category
+  const { fields: dynamicFields, isLoading: dynamicFieldsLoading } = useDynamicFields(formData.department_id, formData.category_id);
 
   // Filter departments based on user's scope (users only see their assigned departments)
   const userDepartments = useMemo(() => {
@@ -270,7 +274,7 @@ const NewItem: React.FC = () => {
                 <Label>الفئة</Label>
                 <Select 
                   value={formData.category_id} 
-                  onValueChange={(v) => setFormData({ ...formData, category_id: v })}
+                  onValueChange={(v) => setFormData({ ...formData, category_id: v, dynamic_fields: {} })}
                   disabled={!formData.department_id}
                 >
                   <SelectTrigger>
@@ -291,6 +295,80 @@ const NewItem: React.FC = () => {
                   <p className="text-sm text-muted-foreground">لا توجد فئات لهذا القسم</p>
                 )}
               </div>
+
+              {/* Dynamic Fields based on Department + Category */}
+              {dynamicFields.length > 0 && (
+                <div className="space-y-4 rounded-lg border p-4 bg-muted/30">
+                  <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                    <ListPlus className="h-4 w-4" />
+                    حقول إضافية
+                  </div>
+                  {dynamicFields.map((field) => (
+                    <div key={field.id} className="space-y-2">
+                      <Label>
+                        {field.field_label}
+                        {field.is_required && <span className="text-destructive mr-1">*</span>}
+                      </Label>
+                      {field.field_type === 'text' && (
+                        <Input
+                          value={formData.dynamic_fields[field.field_key] || ''}
+                          onChange={(e) => setFormData({
+                            ...formData,
+                            dynamic_fields: { ...formData.dynamic_fields, [field.field_key]: e.target.value }
+                          })}
+                          required={field.is_required}
+                        />
+                      )}
+                      {field.field_type === 'number' && (
+                        <Input
+                          type="number"
+                          value={formData.dynamic_fields[field.field_key] || ''}
+                          onChange={(e) => setFormData({
+                            ...formData,
+                            dynamic_fields: { ...formData.dynamic_fields, [field.field_key]: e.target.value }
+                          })}
+                          required={field.is_required}
+                        />
+                      )}
+                      {field.field_type === 'date' && (
+                        <Input
+                          type="date"
+                          value={formData.dynamic_fields[field.field_key] || ''}
+                          onChange={(e) => setFormData({
+                            ...formData,
+                            dynamic_fields: { ...formData.dynamic_fields, [field.field_key]: e.target.value }
+                          })}
+                          required={field.is_required}
+                        />
+                      )}
+                      {field.field_type === 'select' && field.field_options && (
+                        <Select
+                          value={formData.dynamic_fields[field.field_key] || ''}
+                          onValueChange={(v) => setFormData({
+                            ...formData,
+                            dynamic_fields: { ...formData.dynamic_fields, [field.field_key]: v }
+                          })}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="اختر..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {(field.field_options as string[]).map((opt) => (
+                              <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+              {dynamicFieldsLoading && formData.department_id && (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  جاري تحميل الحقول الإضافية...
+                </div>
+              )}
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
