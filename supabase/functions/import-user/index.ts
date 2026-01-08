@@ -31,6 +31,9 @@ serve(async (req) => {
       phone, 
       national_id, 
       password,
+      job_title,
+      direct_manager,
+      hire_date,
       must_change_password = true 
     } = await req.json();
 
@@ -87,7 +90,7 @@ serve(async (req) => {
       );
     }
 
-    // Update profile with must_change_password flag
+    // Update profile with all fields
     const { error: profileError } = await supabaseAdmin
       .from('profiles')
       .update({ 
@@ -96,6 +99,9 @@ serve(async (req) => {
         employee_number: employee_number || null,
         national_id: national_id || null,
         phone: phone || null,
+        job_title: job_title || null,
+        direct_manager: direct_manager || null,
+        hire_date: hire_date || null,
       })
       .eq('user_id', userId);
 

@@ -72,8 +72,8 @@ export default function UserImport() {
   };
 
   const downloadTemplate = () => {
-    const headers = 'fullname,employee_number,email,role,department,phone,national_id,password';
-    const example = 'أحمد محمد,EMP001,ahmed@example.com,employee,تقنية المعلومات,0501234567,1234567890,TempPass@123';
+    const headers = 'fullname,employee_number,email,role,department,phone,national_id,password,job_title,direct_manager,hire_date';
+    const example = 'أحمد محمد,EMP001,ahmed@example.com,employee,تقنية المعلومات,966501234567,1234567890,,مهندس برمجيات,محمد علي,2024-01-15';
     const content = `${headers}\n${example}`;
     const blob = new Blob(['\ufeff' + content], { type: 'text/csv;charset=utf-8' });
     const url = URL.createObjectURL(blob);
@@ -114,8 +114,7 @@ export default function UserImport() {
             <CardHeader>
               <CardTitle>رفع ملف المستخدمين</CardTitle>
               <CardDescription>
-                ارفع ملف CSV أو Excel يحتوي على بيانات المستخدمين. يجب أن يحتوي الملف على الأعمدة التالية:
-                fullname, employee_number, email, role, department, phone, national_id, password
+                ارفع ملف XLSX أو CSV. الأعمدة: fullname, employee_number, email, role, department, phone, national_id, password, job_title, direct_manager, hire_date
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -221,9 +220,10 @@ export default function UserImport() {
                 <AlertDescription className="mt-2 space-y-1">
                   <ul className="list-disc list-inside text-sm">
                     <li>يجب أن يحتوي كل صف على <strong>الاسم الكامل</strong> و<strong>البريد أو الرقم الوظيفي</strong></li>
-                    <li>كلمات المرور المؤقتة ستُعرض مرة واحدة فقط بعد الاستيراد</li>
+                    <li>إذا كانت كلمة المرور فارغة، سيتم توليد كلمة مرور من 8 أرقام تلقائياً</li>
+                    <li>سيتم إرسال بيانات الدخول عبر WhatsApp + Telegram + Email</li>
                     <li>سيُجبر المستخدمون على تغيير كلمة المرور عند أول دخول</li>
-                    <li>الأدوار المتاحة: employee, supervisor, admin</li>
+                    <li>الأدوار المتاحة: employee, supervisor, admin, hr_user, system_admin</li>
                   </ul>
                 </AlertDescription>
               </Alert>
