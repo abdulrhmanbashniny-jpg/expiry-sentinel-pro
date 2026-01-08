@@ -1355,10 +1355,13 @@ export type Database = {
           allow_telegram: boolean | null
           allow_whatsapp: boolean | null
           created_at: string
+          direct_manager: string | null
           email: string | null
           employee_number: string | null
           full_name: string | null
+          hire_date: string | null
           id: string
+          job_title: string | null
           must_change_password: boolean
           national_id: string | null
           phone: string | null
@@ -1370,10 +1373,13 @@ export type Database = {
           allow_telegram?: boolean | null
           allow_whatsapp?: boolean | null
           created_at?: string
+          direct_manager?: string | null
           email?: string | null
           employee_number?: string | null
           full_name?: string | null
+          hire_date?: string | null
           id?: string
+          job_title?: string | null
           must_change_password?: boolean
           national_id?: string | null
           phone?: string | null
@@ -1385,10 +1391,13 @@ export type Database = {
           allow_telegram?: boolean | null
           allow_whatsapp?: boolean | null
           created_at?: string
+          direct_manager?: string | null
           email?: string | null
           employee_number?: string | null
           full_name?: string | null
+          hire_date?: string | null
           id?: string
+          job_title?: string | null
           must_change_password?: boolean
           national_id?: string | null
           phone?: string | null
