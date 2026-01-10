@@ -1678,12 +1678,39 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      aggregated_evaluation_results: {
+        Row: {
+          avg_score: number | null
+          cycle_id: string | null
+          evaluatee_id: string | null
+          evaluation_type: Database["public"]["Enums"]["evaluation_type"] | null
+          evaluator_count: number | null
+          max_score: number | null
+          min_score: number | null
+          score_stddev: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "evaluations_cycle_id_fkey"
+            columns: ["cycle_id"]
+            isOneToOne: false
+            referencedRelation: "evaluation_cycles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       can_view_department: {
         Args: { _department_id: string; _user_id: string }
         Returns: boolean
+      }
+      generate_360_assignments: {
+        Args: { p_cycle_id: string }
+        Returns: {
+          created_count: number
+          skipped_count: number
+        }[]
       }
       get_team_member_ids: {
         Args: { _supervisor_id: string }
@@ -1713,6 +1740,39 @@ export type Database = {
       }
       is_supervisor_or_higher: { Args: { _user_id: string }; Returns: boolean }
       is_system_admin: { Args: { _user_id: string }; Returns: boolean }
+      submit_evaluation_with_score: {
+        Args: { p_evaluation_id: string }
+        Returns: {
+          ai_analyzed_at: string | null
+          ai_recommendations: string | null
+          ai_risks: string | null
+          ai_summary: string | null
+          approved_at: string | null
+          approved_by: string | null
+          created_at: string
+          current_revision: number | null
+          cycle_id: string
+          evaluatee_id: string
+          evaluation_type: Database["public"]["Enums"]["evaluation_type"]
+          evaluator_id: string
+          id: string
+          is_proxy: boolean
+          proxy_by: string | null
+          published_at: string | null
+          published_by: string | null
+          reviewed_at: string | null
+          status: Database["public"]["Enums"]["evaluation_status"]
+          submitted_at: string | null
+          total_score: number | null
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "evaluations"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       sync_missing_users: {
         Args: never
         Returns: {
@@ -1748,6 +1808,9 @@ export type Database = {
         | "admin_to_manager"
         | "self_assessment"
         | "peer_360"
+        | "self"
+        | "employee_to_supervisor"
+        | "supervisor_to_manager"
       item_status: "active" | "expired" | "archived"
       item_workflow_status:
         | "new"
@@ -1914,6 +1977,9 @@ export const Constants = {
         "admin_to_manager",
         "self_assessment",
         "peer_360",
+        "self",
+        "employee_to_supervisor",
+        "supervisor_to_manager",
       ],
       item_status: ["active", "expired", "archived"],
       item_workflow_status: [

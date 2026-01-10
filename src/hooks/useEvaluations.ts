@@ -3,8 +3,17 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 
-export type EvaluationType = 'supervisor_to_employee' | 'manager_to_supervisor' | 'admin_to_manager' | 'self_assessment' | 'peer_360';
-export type EvaluationStatus = 'draft' | 'in_progress' | 'submitted' | 'under_review' | 'reviewed' | 'approved' | 'published' | 'appealed' | 'completed' | 'closed';
+export type EvaluationType = 
+  | 'supervisor_to_employee' 
+  | 'manager_to_supervisor' 
+  | 'admin_to_manager' 
+  | 'self_assessment' 
+  | 'peer_360'
+  | 'self'
+  | 'employee_to_supervisor'
+  | 'supervisor_to_manager';
+
+export type EvaluationStatus = 'draft' | 'submitted' | 'approved' | 'published';
 
 export interface EvaluationCycle {
   id: string;
@@ -57,6 +66,42 @@ export interface EvaluationAnswer {
   created_at: string;
   updated_at: string;
 }
+
+// Labels for evaluation types in Arabic
+export const evaluationTypeLabels: Record<EvaluationType, string> = {
+  self_assessment: 'تقييم ذاتي',
+  self: 'تقييم ذاتي',
+  supervisor_to_employee: 'مشرف ← موظف',
+  manager_to_supervisor: 'مدير ← مشرف',
+  admin_to_manager: 'مدير نظام ← مدير',
+  employee_to_supervisor: 'موظف ← مشرف (تقييم صاعد)',
+  supervisor_to_manager: 'مشرف ← مدير (تقييم صاعد)',
+  peer_360: 'تقييم 360',
+};
+
+// Labels for status in Arabic
+export const statusLabels: Record<EvaluationStatus | string, string> = {
+  draft: 'مسودة',
+  submitted: 'تم الإرسال',
+  approved: 'معتمد',
+  published: 'منشور',
+  // Legacy statuses for backward compatibility
+  in_progress: 'قيد التنفيذ',
+  reviewed: 'تمت المراجعة',
+  completed: 'مكتمل',
+};
+
+// Colors for status badges
+export const statusColors: Record<EvaluationStatus | string, string> = {
+  draft: 'bg-gray-500/10 text-gray-600 border-gray-500/20',
+  submitted: 'bg-yellow-500/10 text-yellow-600 border-yellow-500/20',
+  approved: 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20',
+  published: 'bg-green-500/10 text-green-600 border-green-500/20',
+  // Legacy
+  in_progress: 'bg-blue-500/10 text-blue-600 border-blue-500/20',
+  reviewed: 'bg-purple-500/10 text-purple-600 border-purple-500/20',
+  completed: 'bg-green-500/10 text-green-600 border-green-500/20',
+};
 
 export const useEvaluations = () => {
   const { toast } = useToast();
@@ -160,7 +205,7 @@ export const useEvaluations = () => {
     },
   });
 
-  // إنشاء تقييم
+  // إنشاء تقييم (أو فتح موجود)
   const createEvaluation = useMutation({
     mutationFn: async (evaluation: {
       cycle_id: string;
@@ -170,6 +215,28 @@ export const useEvaluations = () => {
     }) => {
       if (!user) throw new Error('يجب تسجيل الدخول');
 
+      // Check if evaluation already exists
+      const { data: existing, error: checkError } = await supabase
+        .from('evaluations')
+        .select('*')
+        .eq('cycle_id', evaluation.cycle_id)
+        .eq('evaluator_id', user.id)
+        .eq('evaluatee_id', evaluation.evaluatee_id)
+        .eq('evaluation_type', evaluation.evaluation_type)
+        .maybeSingle();
+
+      if (checkError) throw checkError;
+
+      // If exists and is draft, return it (resume)
+      if (existing) {
+        if (existing.status === 'draft') {
+          return existing;
+        } else {
+          throw new Error('هذا التقييم قد تم إرساله بالفعل ولا يمكن إنشاء تقييم جديد');
+        }
+      }
+
+      // Create new evaluation
       const { data, error } = await supabase
         .from('evaluations')
         .insert({
@@ -180,12 +247,16 @@ export const useEvaluations = () => {
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        if (error.code === '23505') {
+          throw new Error('هذا التقييم موجود بالفعل');
+        }
+        throw error;
+      }
       return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['evaluations'] });
-      toast({ title: 'تم إنشاء التقييم بنجاح' });
     },
     onError: (error: Error) => {
       toast({ title: 'خطأ', description: error.message, variant: 'destructive' });
@@ -214,18 +285,13 @@ export const useEvaluations = () => {
     },
   });
 
-  // إرسال التقييم
+  // إرسال التقييم باستخدام الدالة المخصصة
   const submitEvaluation = useMutation({
     mutationFn: async (evaluationId: string) => {
-      const { data, error } = await supabase
-        .from('evaluations')
-        .update({
-          status: 'submitted',
-          submitted_at: new Date().toISOString(),
-        })
-        .eq('id', evaluationId)
-        .select()
-        .single();
+      // Use the database function that calculates score and locks the evaluation
+      const { data, error } = await supabase.rpc('submit_evaluation_with_score', {
+        p_evaluation_id: evaluationId,
+      });
 
       if (error) throw error;
       return data;
@@ -244,10 +310,10 @@ export const useEvaluations = () => {
     mutationFn: async (answer: {
       evaluation_id: string;
       question_id: string;
-      numeric_value?: number;
-      choice_value?: string;
-      text_value?: string;
-      score?: number;
+      numeric_value?: number | null;
+      choice_value?: string | null;
+      text_value?: string | null;
+      score?: number | null;
     }) => {
       const { data, error } = await supabase
         .from('evaluation_answers')
@@ -260,6 +326,29 @@ export const useEvaluations = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['evaluation-answers'] });
+    },
+    onError: (error: Error) => {
+      toast({ title: 'خطأ', description: error.message, variant: 'destructive' });
+    },
+  });
+
+  // توليد مهام التقييم 360
+  const generate360Assignments = useMutation({
+    mutationFn: async (cycleId: string) => {
+      const { data, error } = await supabase.rpc('generate_360_assignments', {
+        p_cycle_id: cycleId,
+      });
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['evaluations'] });
+      const result = data?.[0];
+      toast({ 
+        title: 'تم توليد مهام التقييم',
+        description: `تم إنشاء ${result?.created_count || 0} مهمة جديدة، تخطي ${result?.skipped_count || 0} مهمة موجودة`
+      });
     },
     onError: (error: Error) => {
       toast({ title: 'خطأ', description: error.message, variant: 'destructive' });
@@ -292,6 +381,22 @@ export const useEvaluations = () => {
     return answersQuery.data?.filter((a) => a.evaluation_id === evaluationId) || [];
   };
 
+  // جلب التقييمات المطلوبة مني (pending = draft)
+  const getMyPendingEvaluations = () => {
+    if (!user) return [];
+    return evaluationsQuery.data?.filter(
+      (e) => e.evaluator_id === user.id && e.status === 'draft'
+    ) || [];
+  };
+
+  // جلب التقييمات التي أكملتها (submitted, approved, published)
+  const getMyCompletedEvaluations = () => {
+    if (!user) return [];
+    return evaluationsQuery.data?.filter(
+      (e) => e.evaluator_id === user.id && ['submitted', 'approved', 'published'].includes(e.status)
+    ) || [];
+  };
+
   return {
     cycles: cyclesQuery.data || [],
     evaluations: evaluationsQuery.data || [],
@@ -303,9 +408,12 @@ export const useEvaluations = () => {
     updateEvaluation,
     submitEvaluation,
     saveAnswer,
+    generate360Assignments,
     calculateTotalScore,
     getEvaluationsByCycle,
     getAnswersByEvaluation,
+    getMyPendingEvaluations,
+    getMyCompletedEvaluations,
     refetch: () => {
       cyclesQuery.refetch();
       evaluationsQuery.refetch();

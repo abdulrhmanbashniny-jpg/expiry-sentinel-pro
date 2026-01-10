@@ -26,31 +26,7 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 
-const statusLabels: Record<string, string> = {
-  draft: 'مسودة',
-  in_progress: 'قيد التنفيذ',
-  submitted: 'تم الإرسال',
-  under_review: 'قيد المراجعة',
-  reviewed: 'تمت المراجعة',
-  approved: 'معتمد',
-  published: 'منشور',
-  appealed: 'تم الاعتراض',
-  completed: 'مكتمل',
-  closed: 'مغلق',
-};
-
-const statusColors: Record<string, string> = {
-  draft: 'bg-gray-500/10 text-gray-600',
-  in_progress: 'bg-blue-500/10 text-blue-600',
-  submitted: 'bg-yellow-500/10 text-yellow-600',
-  under_review: 'bg-orange-500/10 text-orange-600',
-  reviewed: 'bg-purple-500/10 text-purple-600',
-  approved: 'bg-emerald-500/10 text-emerald-600',
-  published: 'bg-green-500/10 text-green-600',
-  appealed: 'bg-red-500/10 text-red-600',
-  completed: 'bg-green-500/10 text-green-600',
-  closed: 'bg-gray-500/10 text-gray-600',
-};
+import { statusLabels, statusColors, evaluationTypeLabels } from '@/hooks/useEvaluations';
 
 export default function EvaluationReview() {
   const { isSystemAdmin } = useAuth();
@@ -103,11 +79,11 @@ export default function EvaluationReview() {
 
   // التقييمات بانتظار المراجعة
   const pendingReview = evaluations.filter(
-    (e) => e.status === 'submitted' || e.status === 'reviewed'
+    (e) => e.status === 'submitted'
   );
 
   // التقييمات المعتمدة بانتظار النشر
-  const pendingPublish = evaluations.filter((e) => e.status === 'completed');
+  const pendingPublish = evaluations.filter((e) => e.status === 'approved');
 
   // الاعتراضات المعلقة
   const pendingAppeals = appeals.filter((a) => a.status === 'pending');
