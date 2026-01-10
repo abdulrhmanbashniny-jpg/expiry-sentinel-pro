@@ -1,73 +1,163 @@
-# Welcome to your Lovable project
+# نظام التذكير بالانتهاءات وتقييم الأداء - HR Reminder & Performance Evaluation
 
-## Project info
+## 📋 نظرة عامة
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+نظام متكامل لإدارة الموارد البشرية يشمل:
+- **نظام التذكيرات**: تنبيهات تلقائية لانتهاء العقود والرخص والوثائق
+- **نظام تقييم الأداء**: تقييمات دورية شاملة مع دعم تقييم 360 درجة
+- **مستشار الامتثال الذكي**: تحليل وتقارير باستخدام الذكاء الاصطناعي
+- **تكاملات متعددة**: WhatsApp, Telegram, n8n
 
-## How can I edit this code?
+---
 
-There are several ways of editing your application.
+## 🚀 الميزات الرئيسية
 
-**Use Lovable**
+### 1. نظام التذكيرات
+- إدارة العناصر (عقود، رخص، وثائق) مع تواريخ انتهاء
+- قواعد تذكير مرنة (7، 30، 60 يوم قبل الانتهاء)
+- إرسال تنبيهات تلقائية عبر WhatsApp و Telegram
+- تتبع حالات الإرسال والتسليم
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+### 2. نظام تقييم الأداء
+- دورات تقييم سنوية/نصف سنوية/ربع سنوية
+- أنواع التقييم المدعومة:
+  - `self`: تقييم ذاتي
+  - `supervisor_to_employee`: المشرف يقيم الموظف
+  - `employee_to_supervisor`: الموظف يقيم المشرف (Upward)
+  - `manager_to_supervisor`: المدير يقيم المشرف
+  - `supervisor_to_manager`: المشرف يقيم المدير (Upward)
+- تقييم 360 درجة مع سرية كاملة
+- توليد المهام تلقائياً عند تفعيل الدورة
+- نظام الاعتماد والنشر متعدد المراحل
 
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+#### حالات التقييم (Workflow)
+```
+draft → submitted → approved → published
 ```
 
-**Edit a file directly in GitHub**
+### 3. مستشار الامتثال الذكي
+- تحليل مستوى الالتزام بالذكاء الاصطناعي
+- توصيات مخصصة لتحسين الأداء
+- تقارير دورية شاملة
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+### 4. إدارة المستخدمين والصلاحيات
+- أدوار متعددة: `system_admin`, `admin`, `hr_user`, `supervisor`, `employee`
+- إدارة الأقسام والفرق
+- نظام التفويضات
 
-**Use GitHub Codespaces**
+---
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+## 🛠 التقنيات المستخدمة
 
-## What technologies are used for this project?
+| التقنية | الوصف |
+|---------|-------|
+| **React 18** | إطار العمل الأساسي |
+| **TypeScript** | لغة البرمجة |
+| **Vite** | أداة البناء |
+| **Tailwind CSS** | التنسيق |
+| **shadcn/ui** | مكتبة المكونات |
+| **Lovable Cloud** | الباك إند (Supabase) |
+| **Edge Functions** | الدوال السحابية |
 
-This project is built with:
+---
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+## 📁 هيكل المشروع
 
-## How can I deploy this project?
+```
+src/
+├── components/           # المكونات القابلة لإعادة الاستخدام
+│   ├── ui/              # مكونات shadcn/ui
+│   ├── layout/          # تخطيط الصفحات
+│   ├── dashboard/       # مكونات لوحة التحكم
+│   ├── items/           # مكونات العناصر
+│   └── workflow/        # مكونات سير العمل
+├── pages/               # صفحات التطبيق
+├── hooks/               # React Hooks مخصصة
+├── contexts/            # React Context
+├── types/               # تعريفات TypeScript
+└── integrations/        # تكاملات Supabase
 
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
+supabase/
+├── functions/           # Edge Functions
+│   ├── ai-advisor/
+│   ├── send-telegram/
+│   ├── send-whatsapp/
+│   ├── automated-reminders/
+│   └── ...
+└── migrations/          # ترحيلات قاعدة البيانات
+```
 
-## Can I connect a custom domain to my Lovable project?
+---
 
-Yes, you can!
+## 🔗 التكاملات
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+### WhatsApp (AppsLink)
+- إرسال رسائل مباشرة عبر Evolution API
+- تتبع حالة التسليم عبر Webhook
+- تنسيق الأرقام تلقائياً (JID format)
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+### Telegram
+- بوت للتنبيهات التلقائية
+- أوامر تفاعلية (`/search`, `/expiring`, `/help`)
+- تسجيل المحادثات
+
+### n8n
+- أتمتة سير العمل
+- مصادقة عبر `x-internal-key` header
+- Workflows جاهزة للاستخدام
+
+### الذكاء الاصطناعي (Lovable AI)
+- تحليل التقييمات
+- توليد التقارير
+- مستشار الامتثال
+
+---
+
+## 📚 API Endpoints الرئيسية
+
+| Endpoint | الوصف |
+|----------|-------|
+| `POST /get-due-items` | جلب العناصر المستحقة للتنبيه |
+| `POST /prepare-message` | تحضير رسالة التذكير |
+| `POST /send-telegram` | إرسال رسالة Telegram |
+| `POST /send-whatsapp` | إرسال رسالة WhatsApp |
+| `POST /ai-advisor` | استشارة الذكاء الاصطناعي |
+| `POST /generate-compliance-report` | توليد تقرير الامتثال |
+
+---
+
+## 🔐 الأمان
+
+- Row Level Security (RLS) على جميع الجداول
+- مصادقة JWT للـ Edge Functions المحمية
+- تشفير المفاتيح الحساسة في جدول `integrations`
+- سجل تسجيلات الدخول والتدقيق
+
+---
+
+## 🚦 البدء السريع
+
+1. **إنشاء المشروع**: زيارة [Lovable](https://lovable.dev)
+2. **تفعيل Cloud**: يتم تلقائياً
+3. **إعداد التكاملات**: من صفحة "التكاملات"
+4. **إضافة المستخدمين**: من صفحة "إدارة المستخدمين"
+
+---
+
+## 📖 الوثائق الإضافية
+
+- [دليل التكاملات](./INTEGRATIONS.md)
+- [دليل Lovable](https://docs.lovable.dev)
+
+---
+
+## 📞 الدعم
+
+للمساعدة أو الاستفسارات، تواصل عبر:
+- [مجتمع Lovable Discord](https://discord.com/channels/1119885301872070706)
+- البريد الإلكتروني للدعم الفني
+
+---
+
+**آخر تحديث**: يناير 2026
+**الإصدار**: 2.0.0
