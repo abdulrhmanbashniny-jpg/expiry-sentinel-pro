@@ -41,6 +41,54 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_agent_configs: {
+        Row: {
+          agent_key: string
+          allowed_tools: string[] | null
+          config: Json | null
+          created_at: string | null
+          data_access_scope: string[] | null
+          description: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          name_en: string | null
+          priority: number | null
+          system_prompt: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          agent_key: string
+          allowed_tools?: string[] | null
+          config?: Json | null
+          created_at?: string | null
+          data_access_scope?: string[] | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          name_en?: string | null
+          priority?: number | null
+          system_prompt?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          agent_key?: string
+          allowed_tools?: string[] | null
+          config?: Json | null
+          created_at?: string | null
+          data_access_scope?: string[] | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          name_en?: string | null
+          priority?: number | null
+          system_prompt?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       ai_prompts: {
         Row: {
           created_at: string
@@ -155,6 +203,51 @@ export type Database = {
           provider_name?: string
           response_time_ms?: number | null
           success?: boolean
+        }
+        Relationships: []
+      }
+      automation_runs: {
+        Row: {
+          completed_at: string | null
+          duration_ms: number | null
+          error_message: string | null
+          id: string
+          items_failed: number | null
+          items_processed: number | null
+          items_success: number | null
+          job_type: string
+          metadata: Json | null
+          results: Json | null
+          started_at: string | null
+          status: string | null
+        }
+        Insert: {
+          completed_at?: string | null
+          duration_ms?: number | null
+          error_message?: string | null
+          id?: string
+          items_failed?: number | null
+          items_processed?: number | null
+          items_success?: number | null
+          job_type: string
+          metadata?: Json | null
+          results?: Json | null
+          started_at?: string | null
+          status?: string | null
+        }
+        Update: {
+          completed_at?: string | null
+          duration_ms?: number | null
+          error_message?: string | null
+          id?: string
+          items_failed?: number | null
+          items_processed?: number | null
+          items_success?: number | null
+          job_type?: string
+          metadata?: Json | null
+          results?: Json | null
+          started_at?: string | null
+          status?: string | null
         }
         Relationships: []
       }
@@ -1350,6 +1443,48 @@ export type Database = {
         }
         Relationships: []
       }
+      platform_metadata: {
+        Row: {
+          category: string
+          config: Json | null
+          created_at: string | null
+          description: string | null
+          id: string
+          is_active: boolean | null
+          key: string
+          name: string
+          name_en: string | null
+          updated_at: string | null
+          version: number | null
+        }
+        Insert: {
+          category: string
+          config?: Json | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          key: string
+          name: string
+          name_en?: string | null
+          updated_at?: string | null
+          version?: number | null
+        }
+        Update: {
+          category?: string
+          config?: Json | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          key?: string
+          name?: string
+          name_en?: string | null
+          updated_at?: string | null
+          version?: number | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           allow_telegram: boolean | null
@@ -1454,6 +1589,41 @@ export type Database = {
             columns: ["evaluation_id"]
             isOneToOne: false
             referencedRelation: "evaluations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rate_limits: {
+        Row: {
+          channel: string
+          count: number | null
+          date: string
+          id: string
+          last_sent_at: string | null
+          recipient_id: string | null
+        }
+        Insert: {
+          channel: string
+          count?: number | null
+          date?: string
+          id?: string
+          last_sent_at?: string | null
+          recipient_id?: string | null
+        }
+        Update: {
+          channel?: string
+          count?: number | null
+          date?: string
+          id?: string
+          last_sent_at?: string | null
+          recipient_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rate_limits_recipient_id_fkey"
+            columns: ["recipient_id"]
+            isOneToOne: false
+            referencedRelation: "recipients"
             referencedColumns: ["id"]
           },
         ]
