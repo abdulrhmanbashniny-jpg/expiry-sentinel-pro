@@ -286,20 +286,22 @@ serve(async (req) => {
                 });
 
                 // Update rate limit
-                await supabase.rpc('increment_rate_limit', { 
-                  p_channel: 'telegram', 
-                  p_recipient_id: r.id,
-                  p_date: todayStr
-                }).catch(() => {
+                try {
+                  await supabase.rpc('increment_rate_limit', { 
+                    p_channel: 'telegram', 
+                    p_recipient_id: r.id,
+                    p_date: todayStr
+                  });
+                } catch {
                   // Fallback: upsert directly
-                  supabase.from('rate_limits').upsert({
+                  await supabase.from('rate_limits').upsert({
                     channel: 'telegram',
                     recipient_id: r.id,
                     date: todayStr,
                     count: (rateLimit?.count || 0) + 1,
                     last_sent_at: new Date().toISOString()
                   }, { onConflict: 'channel,recipient_id,date' });
-                });
+                }
 
                 results.telegram_sent++;
                 console.log(`✅ Telegram sent to ${r.name}`);
