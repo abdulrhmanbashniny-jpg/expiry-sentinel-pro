@@ -23,6 +23,7 @@ import {
   FileCheck,
   MessageSquareText,
   ListPlus,
+  Activity,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -63,6 +64,7 @@ const navItems: NavItem[] = [
   { to: '/user-management', icon: Users, label: 'إدارة المستخدمين', minRole: 'admin' },
   { to: '/user-import', icon: Upload, label: 'استيراد المستخدمين', minRole: 'system_admin' },
   { to: '/integrations', icon: Link2, label: 'التكاملات', minRole: 'system_admin' },
+  { to: '/automation-dashboard', icon: Activity, label: 'لوحة التشغيل', minRole: 'admin' },
   { to: '/security', icon: Shield, label: 'الأمان', minRole: 'system_admin' },
   { to: '/settings', icon: Settings, label: 'الإعدادات', minRole: 'admin' },
   { to: '/profile', icon: UserCircle, label: 'ملفي الشخصي' },
