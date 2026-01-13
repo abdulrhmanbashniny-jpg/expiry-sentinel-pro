@@ -74,3 +74,12 @@ verify_jwt = true
 
 [functions.automated-reminders]
 verify_jwt = false
+
+[functions.ai-context]
+verify_jwt = false
+
+[functions.ai-orchestrator]
+verify_jwt = true
+
+[functions.send-credentials]
+verify_jwt = true

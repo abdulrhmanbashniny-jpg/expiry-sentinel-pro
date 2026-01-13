@@ -34,6 +34,7 @@ import UserManagement from "./pages/UserManagement";
 import DatabaseExport from "./pages/DatabaseExport";
 import MessageTemplates from "./pages/MessageTemplates";
 import DynamicFields from "./pages/DynamicFields";
+import AutomationDashboard from "./pages/AutomationDashboard";
 import NotFound from "./pages/NotFound";
 import { Loader2 } from "lucide-react";
 
@@ -98,6 +99,7 @@ const AppRoutes = () => {
         <Route path="database-export" element={<DatabaseExport />} />
         <Route path="message-templates" element={<MessageTemplates />} />
         <Route path="dynamic-fields" element={<DynamicFields />} />
+        <Route path="automation-dashboard" element={<AutomationDashboard />} />
       </Route>
       <Route path="*" element={<NotFound />} />
     </Routes>
