@@ -1875,6 +1875,21 @@ export type Database = {
         Args: { _department_id: string; _user_id: string }
         Returns: boolean
       }
+      check_template_usage: {
+        Args: { p_template_id: string }
+        Returns: {
+          cycle_count: number
+          cycle_names: string[]
+        }[]
+      }
+      close_expired_evaluation_cycles: {
+        Args: never
+        Returns: {
+          closed_cycles_count: number
+          cycle_details: Json
+          updated_evaluations_count: number
+        }[]
+      }
       generate_360_assignments: {
         Args: { p_cycle_id: string }
         Returns: {
@@ -1900,6 +1915,10 @@ export type Database = {
       }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
       is_admin_or_higher: { Args: { _user_id: string }; Returns: boolean }
+      is_cycle_open_for_evaluation: {
+        Args: { p_cycle_id: string }
+        Returns: boolean
+      }
       is_department_manager: {
         Args: { _department_id: string; _user_id: string }
         Returns: boolean
@@ -1972,6 +1991,7 @@ export type Database = {
         | "published"
         | "appealed"
         | "closed"
+        | "not_submitted"
       evaluation_type:
         | "supervisor_to_employee"
         | "manager_to_supervisor"
@@ -2140,6 +2160,7 @@ export const Constants = {
         "published",
         "appealed",
         "closed",
+        "not_submitted",
       ],
       evaluation_type: [
         "supervisor_to_employee",

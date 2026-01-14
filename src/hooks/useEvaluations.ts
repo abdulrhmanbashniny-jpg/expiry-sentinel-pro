@@ -13,7 +13,7 @@ export type EvaluationType =
   | 'employee_to_supervisor'
   | 'supervisor_to_manager';
 
-export type EvaluationStatus = 'draft' | 'submitted' | 'approved' | 'published';
+export type EvaluationStatus = 'draft' | 'submitted' | 'approved' | 'published' | 'not_submitted';
 
 export interface EvaluationCycle {
   id: string;
@@ -85,6 +85,7 @@ export const statusLabels: Record<EvaluationStatus | string, string> = {
   submitted: 'تم الإرسال',
   approved: 'معتمد',
   published: 'منشور',
+  not_submitted: 'لم يقم بالتقييم',
   // Legacy statuses for backward compatibility
   in_progress: 'قيد التنفيذ',
   reviewed: 'تمت المراجعة',
@@ -97,6 +98,7 @@ export const statusColors: Record<EvaluationStatus | string, string> = {
   submitted: 'bg-yellow-500/10 text-yellow-600 border-yellow-500/20',
   approved: 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20',
   published: 'bg-green-500/10 text-green-600 border-green-500/20',
+  not_submitted: 'bg-red-500/10 text-red-600 border-red-500/20',
   // Legacy
   in_progress: 'bg-blue-500/10 text-blue-600 border-blue-500/20',
   reviewed: 'bg-purple-500/10 text-purple-600 border-purple-500/20',
