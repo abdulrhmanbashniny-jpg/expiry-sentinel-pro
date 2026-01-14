@@ -190,7 +190,7 @@ serve(async (req) => {
       }
 
       // Prepare message data (common for both channels)
-      const baseUrl = supabaseUrl.replace('.supabase.co', '.lovable.app');
+      const PUBLISHED_APP_URL = 'https://expiry-sentinel-pro.lovable.app';
       const remainingText = daysUntilExpiry === 0 ? 'اليوم' : 
                            daysUntilExpiry === 1 ? 'غداً' : 
                            `${daysUntilExpiry} يوم`;
@@ -210,7 +210,7 @@ serve(async (req) => {
         creator_note: item.notes || '',
         responsible_person: item.responsible_person || '-',
         assignee: item.responsible_person || '-',
-        item_url: `${baseUrl}/items/${item.id}`,
+        item_url: `${PUBLISHED_APP_URL}/items/${item.id}`,
         work_status: item.workflow_status,
         validity_status: 'active',
         dynamic_fields: item.dynamic_fields || {},
