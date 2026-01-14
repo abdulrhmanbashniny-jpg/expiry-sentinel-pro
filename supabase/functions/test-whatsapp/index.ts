@@ -6,6 +6,9 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Published app URL
+const PUBLISHED_APP_URL = 'https://expiry-sentinel-pro.lovable.app';
+
 // Authentication helper
 async function verifyAuth(req: Request) {
   const authHeader = req.headers.get('Authorization');
@@ -26,6 +29,26 @@ async function verifyAuth(req: Request) {
   return { user, error: null };
 }
 
+// Apply template with variables
+function applyTemplate(templateText: string, data: Record<string, any>): string {
+  let result = templateText;
+
+  // Replace regular variables
+  for (const [key, value] of Object.entries(data)) {
+    result = result.replace(new RegExp(`{{${key}}}`, 'g'), String(value || ''));
+  }
+
+  // Process conditionals {{#if field}}...{{/if}}
+  result = result.replace(/{{#if\s+(\w+)}}([\s\S]*?){{\/if}}/g, (match, field, content) => {
+    return data[field] ? content : '';
+  });
+
+  // Remove unreplaced variables
+  result = result.replace(/{{[\w.]+}}/g, '');
+
+  return result.trim();
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -42,7 +65,7 @@ serve(async (req) => {
       );
     }
 
-    const { item_id, recipient_id, test_message } = await req.json();
+    const { item_id, recipient_id } = await req.json();
     
     console.log('Test WhatsApp notification request:', { item_id, recipient_id, by_user: user.id });
 
@@ -51,12 +74,13 @@ serve(async (req) => {
     
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Fetch item details
+    // Fetch item details with department
     const { data: item, error: itemError } = await supabase
       .from('items')
       .select(`
         *,
-        category:categories(name),
+        category:categories(id, name, code),
+        department:departments(id, name),
         reminder_rule:reminder_rules(name, days_before)
       `)
       .eq('id', item_id)
@@ -85,28 +109,23 @@ serve(async (req) => {
       );
     }
 
-    // Get message template from settings
-    const { data: settings } = await supabase
-      .from('settings')
-      .select('value')
-      .eq('key', 'whatsapp_template')
-      .single();
+    // Get WhatsApp template from message_templates table
+    const { data: templates } = await supabase
+      .from('message_templates')
+      .select('*')
+      .eq('channel', 'whatsapp')
+      .eq('is_active', true)
+      .order('is_default', { ascending: false })
+      .limit(1);
 
-    const defaultTemplate = `🔔 تنبيه: {{title}}
-
-📅 تاريخ الانتهاء: {{expiry_date}}
-⏰ الوقت: {{expiry_time}}
-⏳ الأيام المتبقية: {{days_left}} يوم
-
-📁 الفئة: {{category}}
-👤 المسؤول: {{responsible_person}}
-
-ملاحظة: {{notes}}
-
----
-HR Expiry Reminder System`;
-
-    const template = settings?.value?.template || defaultTemplate;
+    const template = templates?.[0];
+    
+    if (!template) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'لا يوجد قالب واتساب متاح' }),
+        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     // Calculate days left
     const expiryDate = new Date(item.expiry_date);
@@ -114,20 +133,43 @@ HR Expiry Reminder System`;
     today.setHours(0, 0, 0, 0);
     const daysLeft = Math.ceil((expiryDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 
-    // Format the message
-    const message = template
-      .replace(/\{\{title\}\}/g, item.title)
-      .replace(/\{\{expiry_date\}\}/g, new Date(item.expiry_date).toISOString().split('T')[0])
-      .replace(/\{\{expiry_time\}\}/g, item.expiry_time || '09:00')
-      .replace(/\{\{days_left\}\}/g, daysLeft.toString())
-      .replace(/\{\{category\}\}/g, item.category?.name || 'غير محدد')
-      .replace(/\{\{responsible_person\}\}/g, item.responsible_person || 'غير محدد')
-      .replace(/\{\{notes\}\}/g, item.notes || 'لا توجد ملاحظات');
+    const remainingText = daysLeft === 0 ? 'اليوم' : 
+                          daysLeft === 1 ? 'غداً' : 
+                          daysLeft < 0 ? `متأخر ${Math.abs(daysLeft)} يوم` :
+                          `${daysLeft} يوم`;
+
+    // Build message data with all placeholders
+    const messageData = {
+      // Required fields
+      recipient_name: recipient.name,
+      title: item.title,
+      item_title: item.title,
+      item_code: item.ref_number || '-',
+      ref_number: item.ref_number || '-',
+      due_date: item.expiry_date,
+      expiry_date: item.expiry_date,
+      remaining_text: remainingText,
+      days_left: daysLeft,
+      item_url: `${PUBLISHED_APP_URL}/items/${item.id}`,
+      
+      // Optional fields
+      department_name: item.department?.name || '-',
+      category: item.category?.name || '-',
+      category_name: item.category?.name || '-',
+      creator_note: item.notes || '',
+      notes: item.notes || '',
+      responsible_person: item.responsible_person || '-',
+      expiry_time: item.expiry_time || '09:00',
+    };
+
+    // Apply template
+    const message = applyTemplate(template.template_text, messageData);
 
     console.log('Prepared test message for WhatsApp:', {
       to: recipient.whatsapp_number,
       recipientName: recipient.name,
-      message: message.substring(0, 100) + '...'
+      messageLength: message.length,
+      templateUsed: template.name
     });
 
     // Log the test notification
@@ -140,7 +182,7 @@ HR Expiry Reminder System`;
         scheduled_for: new Date().toISOString(),
         sent_at: new Date().toISOString(),
         status: 'sent',
-        provider_message_id: `test_${Date.now()}`,
+        provider_message_id: `test_whatsapp_${Date.now()}`,
         error_message: null,
       })
       .select()
@@ -150,7 +192,7 @@ HR Expiry Reminder System`;
       console.error('Error logging notification:', logError);
     }
 
-    // Return the prepared message for n8n or direct WhatsApp integration
+    // Return the prepared message
     return new Response(
       JSON.stringify({
         success: true,
@@ -162,11 +204,13 @@ HR Expiry Reminder System`;
           item: {
             id: item.id,
             title: item.title,
+            ref_number: item.ref_number,
             expiry_date: item.expiry_date,
             expiry_time: item.expiry_time,
             days_left: daysLeft,
           },
           message: message,
+          template_used: template.name,
           log_id: logEntry?.id,
           webhook_payload: {
             phone: recipient.whatsapp_number,

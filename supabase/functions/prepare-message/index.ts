@@ -150,6 +150,9 @@ serve(async (req) => {
       );
     }
 
+    // Published app URL
+    const PUBLISHED_APP_URL = 'https://expiry-sentinel-pro.lovable.app';
+
     // Calculate days left
     const expiryDate = new Date(item.expiry_date);
     const today = new Date();
@@ -162,7 +165,6 @@ serve(async (req) => {
                           `${daysLeft} يوم`;
 
     // Build message data with all placeholders
-    const baseUrl = supabaseUrl.replace('.supabase.co', '.lovable.app');
     const messageData = {
       // Required fields
       recipient_name: recipient.name,
@@ -174,7 +176,7 @@ serve(async (req) => {
       expiry_date: item.expiry_date,
       remaining_text: remainingText,
       days_left: daysLeft,
-      item_url: `${baseUrl}/items/${item.id}`,
+      item_url: `${PUBLISHED_APP_URL}/items/${item.id}`,
       
       // Optional fields
       department_name: item.department?.name || '-',
