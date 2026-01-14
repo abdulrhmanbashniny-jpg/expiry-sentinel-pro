@@ -352,7 +352,7 @@ export default function Evaluations() {
             <Card>
               <CardHeader>
                 <CardTitle>دورات التقييم</CardTitle>
-                <CardDescription>الدورات النشطة والسابقة</CardDescription>
+                <CardDescription>الدورات النشطة والسابقة مع إحصائيات الالتزام</CardDescription>
               </CardHeader>
               <CardContent>
                 {cycles.length === 0 ? (
@@ -365,39 +365,58 @@ export default function Evaluations() {
                         <TableHead>تاريخ البداية</TableHead>
                         <TableHead>تاريخ النهاية</TableHead>
                         <TableHead>الحالة</TableHead>
-                        <TableHead>التقييم الذاتي</TableHead>
-                        <TableHead>360</TableHead>
+                        <TableHead>نسبة الإكمال</TableHead>
                         <TableHead>الإجراء</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {cycles.map((cycle) => (
-                        <TableRow key={cycle.id}>
-                          <TableCell className="font-medium">{cycle.name}</TableCell>
-                          <TableCell>{format(new Date(cycle.start_date), 'yyyy-MM-dd')}</TableCell>
-                          <TableCell>{format(new Date(cycle.end_date), 'yyyy-MM-dd')}</TableCell>
-                          <TableCell>
-                            <Badge variant={cycle.is_active ? 'default' : 'secondary'}>
-                              {cycle.is_active ? 'نشطة' : 'منتهية'}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>{cycle.allow_self_assessment ? '✓' : '-'}</TableCell>
-                          <TableCell>{cycle.allow_360 ? '✓' : '-'}</TableCell>
-                          <TableCell>
-                            {cycle.is_active && (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => handleGenerateAssignments(cycle.id)}
-                                disabled={generate360Assignments.isPending}
-                              >
-                                <RefreshCw className={`h-4 w-4 ml-1 ${generate360Assignments.isPending ? 'animate-spin' : ''}`} />
-                                توليد المهام
-                              </Button>
-                            )}
-                          </TableCell>
-                        </TableRow>
-                      ))}
+                      {cycles.map((cycle) => {
+                        const cycleEvaluations = evaluations.filter(e => e.cycle_id === cycle.id);
+                        const totalEvals = cycleEvaluations.length;
+                        const completedEvals = cycleEvaluations.filter(e => ['submitted', 'approved', 'published'].includes(e.status)).length;
+                        const notSubmittedEvals = cycleEvaluations.filter(e => e.status === 'not_submitted').length;
+                        const draftEvals = cycleEvaluations.filter(e => e.status === 'draft').length;
+                        const completionRate = totalEvals > 0 ? Math.round((completedEvals / totalEvals) * 100) : 0;
+                        
+                        return (
+                          <TableRow key={cycle.id}>
+                            <TableCell className="font-medium">{cycle.name}</TableCell>
+                            <TableCell>{format(new Date(cycle.start_date), 'yyyy-MM-dd')}</TableCell>
+                            <TableCell>{format(new Date(cycle.end_date), 'yyyy-MM-dd')}</TableCell>
+                            <TableCell>
+                              <Badge variant={cycle.is_active ? 'default' : 'secondary'}>
+                                {cycle.is_active ? 'نشطة' : 'منتهية'}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex flex-col gap-1">
+                                <div className="flex items-center gap-2">
+                                  <Progress value={completionRate} className="w-20" />
+                                  <span className="text-sm">{completionRate}%</span>
+                                </div>
+                                <div className="text-xs text-muted-foreground">
+                                  <span className="text-green-600">{completedEvals} مكتمل</span>
+                                  {draftEvals > 0 && <span className="text-gray-500"> • {draftEvals} قيد التنفيذ</span>}
+                                  {notSubmittedEvals > 0 && <span className="text-red-600"> • {notSubmittedEvals} لم يقم بالتقييم</span>}
+                                </div>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              {cycle.is_active && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleGenerateAssignments(cycle.id)}
+                                  disabled={generate360Assignments.isPending}
+                                >
+                                  <RefreshCw className={`h-4 w-4 ml-1 ${generate360Assignments.isPending ? 'animate-spin' : ''}`} />
+                                  توليد المهام
+                                </Button>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
                     </TableBody>
                   </Table>
                 )}

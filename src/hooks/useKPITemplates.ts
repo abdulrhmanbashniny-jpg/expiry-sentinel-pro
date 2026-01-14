@@ -144,9 +144,23 @@ export const useKPITemplates = () => {
     },
   });
 
-  // حذف قالب
+  // التحقق من استخدام القالب قبل الحذف
+  const checkTemplateUsage = async (templateId: string): Promise<{ cycleCount: number; cycleNames: string[] }> => {
+    const { data, error } = await supabase.rpc('check_template_usage', { p_template_id: templateId });
+    if (error) throw error;
+    const result = data?.[0] || { cycle_count: 0, cycle_names: [] };
+    return { cycleCount: result.cycle_count, cycleNames: result.cycle_names || [] };
+  };
+
+  // حذف قالب (مع التحقق من الاستخدام)
   const deleteTemplate = useMutation({
     mutationFn: async (id: string) => {
+      // التحقق من الاستخدام أولاً
+      const usage = await checkTemplateUsage(id);
+      if (usage.cycleCount > 0) {
+        throw new Error(`لا يمكن حذف هذا القالب لأنه مستخدم في ${usage.cycleCount} دورة/دورات تقييم. فضلاً قم بإنهاء أو تعديل الدورات المرتبطة به قبل الحذف، أو استخدم خيار "تعطيل القالب" بدلاً من الحذف.`);
+      }
+
       const { error } = await supabase
         .from('kpi_templates')
         .delete()
@@ -157,6 +171,28 @@ export const useKPITemplates = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['kpi-templates'] });
       toast({ title: 'تم حذف القالب' });
+    },
+    onError: (error: Error) => {
+      toast({ title: 'لا يمكن حذف القالب', description: error.message, variant: 'destructive' });
+    },
+  });
+
+  // تعطيل / تفعيل قالب
+  const toggleTemplateActive = useMutation({
+    mutationFn: async ({ id, is_active }: { id: string; is_active: boolean }) => {
+      const { data, error } = await supabase
+        .from('kpi_templates')
+        .update({ is_active })
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['kpi-templates'] });
+      toast({ title: data.is_active ? 'تم تفعيل القالب' : 'تم تعطيل القالب (أرشفة)' });
     },
     onError: (error: Error) => {
       toast({ title: 'خطأ', description: error.message, variant: 'destructive' });
@@ -321,6 +357,7 @@ export const useKPITemplates = () => {
     createTemplate,
     updateTemplate,
     deleteTemplate,
+    toggleTemplateActive,
     createAxis,
     updateAxis,
     deleteAxis,

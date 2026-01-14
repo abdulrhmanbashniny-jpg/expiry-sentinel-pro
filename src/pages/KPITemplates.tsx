@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Plus, Edit, Trash2, FileText, Layers, HelpCircle, Upload, FileJson, Eye } from 'lucide-react';
+import { Plus, Edit, Trash2, FileText, Layers, HelpCircle, Upload, FileJson, Eye, Archive, Power } from 'lucide-react';
 import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 
@@ -61,6 +61,7 @@ export default function KPITemplates() {
     createTemplate,
     updateTemplate,
     deleteTemplate,
+    toggleTemplateActive,
     createAxis,
     updateAxis,
     deleteAxis,
@@ -455,7 +456,7 @@ export default function KPITemplates() {
                 <AccordionContent className="px-4 pb-4">
                   <div className="space-y-4">
                     {canManage && (
-                      <div className="flex gap-2">
+                      <div className="flex gap-2 flex-wrap">
                         <Button size="sm" variant="outline" onClick={() => openEditTemplate(template)}>
                           <Edit className="h-4 w-4 ml-1" />
                           تعديل
@@ -473,12 +474,31 @@ export default function KPITemplates() {
                         </Button>
                         <Button
                           size="sm"
-                          variant="destructive"
-                          onClick={() => deleteTemplate.mutate(template.id)}
+                          variant={template.is_active ? 'secondary' : 'default'}
+                          onClick={() => toggleTemplateActive.mutate({ id: template.id, is_active: !template.is_active })}
                         >
-                          <Trash2 className="h-4 w-4 ml-1" />
-                          حذف
+                          {template.is_active ? (
+                            <>
+                              <Archive className="h-4 w-4 ml-1" />
+                              أرشفة (تعطيل)
+                            </>
+                          ) : (
+                            <>
+                              <Power className="h-4 w-4 ml-1" />
+                              تفعيل
+                            </>
+                          )}
                         </Button>
+                        {!template.is_active && (
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => deleteTemplate.mutate(template.id)}
+                          >
+                            <Trash2 className="h-4 w-4 ml-1" />
+                            حذف نهائي
+                          </Button>
+                        )}
                       </div>
                     )}
 
