@@ -305,7 +305,6 @@ serve(async (req) => {
 
                 results.telegram_sent++;
                 console.log(`✅ Telegram sent to ${r.name}`);
-                continue; // Skip WhatsApp if Telegram succeeded
               } else {
                 throw new Error(result.description || 'Telegram API error');
               }
