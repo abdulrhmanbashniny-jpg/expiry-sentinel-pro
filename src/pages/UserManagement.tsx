@@ -10,10 +10,12 @@ import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { 
   Users, Search, Edit, Mail, Phone, Hash, User, 
-  MessageCircle, Send, Shield, Building2, Loader2 
+  MessageCircle, Send, Shield, Building2, Loader2,
+  UserX, Trash2, AlertTriangle
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -39,6 +41,11 @@ export default function UserManagement() {
     allow_telegram: false,
     telegram_user_id: '',
   });
+  
+  const [deactivateDialogOpen, setDeactivateDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [selectedUserForAction, setSelectedUserForAction] = useState<any>(null);
+  const [actionLoading, setActionLoading] = useState(false);
 
   const canEdit = isSystemAdmin || isAdmin;
 
@@ -101,6 +108,92 @@ export default function UserManagement() {
   const getInitials = (name: string | null) => {
     if (!name) return '??';
     return name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
+  };
+
+  const handleDeactivateUser = async () => {
+    if (!selectedUserForAction) return;
+    setActionLoading(true);
+    
+    try {
+      // Deactivate by disabling all communication channels
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          allow_whatsapp: false,
+          allow_telegram: false,
+        })
+        .eq('user_id', selectedUserForAction.profile.user_id);
+
+      if (error) throw error;
+
+      toast({ 
+        title: 'تم تعطيل الحساب',
+        description: 'تم إيقاف قنوات التواصل للمستخدم. لن يتلقى أي تنبيهات.',
+      });
+      setDeactivateDialogOpen(false);
+      refetch();
+    } catch (error: any) {
+      toast({ 
+        title: 'خطأ', 
+        description: error.message, 
+        variant: 'destructive' 
+      });
+    } finally {
+      setActionLoading(false);
+      setSelectedUserForAction(null);
+    }
+  };
+
+  const handleDeleteUser = async () => {
+    if (!selectedUserForAction) return;
+    setActionLoading(true);
+    
+    try {
+      const userId = selectedUserForAction.profile.user_id;
+      
+      // Delete profile first (will cascade or we handle related data)
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .delete()
+        .eq('user_id', userId);
+
+      if (profileError) throw profileError;
+
+      // Delete user roles
+      const { error: roleError } = await supabase
+        .from('user_roles')
+        .delete()
+        .eq('user_id', userId);
+
+      if (roleError) console.warn('Role deletion warning:', roleError);
+
+      toast({ 
+        title: 'تم حذف الحساب',
+        description: 'تم حذف بيانات المستخدم من النظام.',
+        variant: 'destructive'
+      });
+      setDeleteDialogOpen(false);
+      refetch();
+    } catch (error: any) {
+      toast({ 
+        title: 'خطأ في الحذف', 
+        description: error.message, 
+        variant: 'destructive' 
+      });
+    } finally {
+      setActionLoading(false);
+      setSelectedUserForAction(null);
+    }
+  };
+
+  const openDeactivateDialog = (user: any) => {
+    setSelectedUserForAction(user);
+    setDeactivateDialogOpen(true);
+  };
+
+  const openDeleteDialog = (user: any) => {
+    setSelectedUserForAction(user);
+    setDeleteDialogOpen(true);
   };
 
   return (
@@ -242,9 +335,31 @@ export default function UserManagement() {
                       </TableCell>
                       {canEdit && (
                         <TableCell>
-                          <Button size="sm" variant="ghost" onClick={() => handleEditUser(user)}>
-                            <Edit className="h-4 w-4" />
-                          </Button>
+                          <div className="flex gap-1">
+                            <Button size="sm" variant="ghost" onClick={() => handleEditUser(user)} title="تعديل">
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button 
+                              size="sm" 
+                              variant="ghost" 
+                              onClick={() => openDeactivateDialog(user)}
+                              title="تعطيل الحساب"
+                              className="text-orange-500 hover:text-orange-600 hover:bg-orange-50"
+                            >
+                              <UserX className="h-4 w-4" />
+                            </Button>
+                            {isSystemAdmin && (
+                              <Button 
+                                size="sm" 
+                                variant="ghost" 
+                                onClick={() => openDeleteDialog(user)}
+                                title="حذف الحساب"
+                                className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            )}
+                          </div>
                         </TableCell>
                       )}
                     </TableRow>
@@ -352,6 +467,83 @@ export default function UserManagement() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Deactivate Dialog */}
+      <AlertDialog open={deactivateDialogOpen} onOpenChange={setDeactivateDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-orange-600">
+              <UserX className="h-5 w-5" />
+              تعطيل حساب المستخدم
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              <div className="space-y-2">
+                <p>
+                  هل تريد تعطيل حساب <strong>{selectedUserForAction?.profile?.full_name}</strong>؟
+                </p>
+                <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 text-sm">
+                  <p className="font-medium text-orange-800">ماذا سيحدث:</p>
+                  <ul className="list-disc list-inside text-orange-700 mt-1">
+                    <li>سيتم إيقاف جميع قنوات التواصل (واتساب، تيليجرام)</li>
+                    <li>لن يتلقى المستخدم أي تنبيهات</li>
+                    <li>ستبقى بياناته وسجلاته محفوظة</li>
+                    <li>يمكن إعادة تفعيله لاحقاً</li>
+                  </ul>
+                </div>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>إلغاء</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDeactivateUser}
+              className="bg-orange-500 hover:bg-orange-600"
+              disabled={actionLoading}
+            >
+              {actionLoading && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
+              تعطيل الحساب
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="h-5 w-5" />
+              حذف حساب المستخدم نهائياً
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              <div className="space-y-2">
+                <p>
+                  هل أنت متأكد من حذف حساب <strong>{selectedUserForAction?.profile?.full_name}</strong>؟
+                </p>
+                <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-3 text-sm">
+                  <p className="font-medium text-destructive">تحذير - لا يمكن التراجع:</p>
+                  <ul className="list-disc list-inside text-destructive/80 mt-1">
+                    <li>سيتم حذف بيانات المستخدم من النظام</li>
+                    <li>قد تتأثر العناصر والتقييمات المرتبطة به</li>
+                    <li>لن يمكن استعادة البيانات</li>
+                  </ul>
+                </div>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>إلغاء</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDeleteUser}
+              className="bg-destructive hover:bg-destructive/90"
+              disabled={actionLoading}
+            >
+              {actionLoading && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
+              حذف نهائي
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
