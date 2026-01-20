@@ -1349,6 +1349,7 @@ export type Database = {
       }
       notification_log: {
         Row: {
+          channel: string | null
           created_at: string
           delay_reason: string | null
           error_message: string | null
@@ -1367,6 +1368,7 @@ export type Database = {
           status: Database["public"]["Enums"]["notification_status"]
         }
         Insert: {
+          channel?: string | null
           created_at?: string
           delay_reason?: string | null
           error_message?: string | null
@@ -1385,6 +1387,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["notification_status"]
         }
         Update: {
+          channel?: string | null
           created_at?: string
           delay_reason?: string | null
           error_message?: string | null
@@ -1487,6 +1490,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          account_status: string | null
           allow_telegram: boolean | null
           allow_whatsapp: boolean | null
           created_at: string
@@ -1505,6 +1509,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          account_status?: string | null
           allow_telegram?: boolean | null
           allow_whatsapp?: boolean | null
           created_at?: string
@@ -1523,6 +1528,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          account_status?: string | null
           allow_telegram?: boolean | null
           allow_whatsapp?: boolean | null
           created_at?: string

@@ -7,23 +7,23 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { 
-  Users, Search, Edit, Mail, Phone, Hash, User, 
-  MessageCircle, Send, Shield, Building2, Loader2,
-  UserX, Trash2, AlertTriangle
+  Users, Search, Edit, MessageCircle, Send, Loader2,
+  UserX, Trash2, AlertTriangle, UserPlus, CheckSquare
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { ROLE_LABELS } from '@/types/database';
+import { ROLE_LABELS, AppRole } from '@/types/database';
 
 export default function UserManagement() {
   const { isSystemAdmin, isAdmin } = useAuth();
-  const { users, isLoading, refetch } = useTeamManagement();
+  const { users, departments, isLoading, refetch, addUserToDepartment } = useTeamManagement();
   const { toast } = useToast();
   
   const [search, setSearch] = useState('');
@@ -47,9 +47,33 @@ export default function UserManagement() {
   const [selectedUserForAction, setSelectedUserForAction] = useState<any>(null);
   const [actionLoading, setActionLoading] = useState(false);
 
+  // Bulk selection
+  const [selectedUsers, setSelectedUsers] = useState<Set<string>>(new Set());
+  const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
+
+  // Add user dialog
+  const [addUserDialogOpen, setAddUserDialogOpen] = useState(false);
+  const [addingUser, setAddingUser] = useState(false);
+  const [newUserForm, setNewUserForm] = useState({
+    full_name: '',
+    email: '',
+    phone: '',
+    employee_number: '',
+    role: 'employee' as AppRole,
+    department_id: '',
+    password: '',
+  });
+
   const canEdit = isSystemAdmin || isAdmin;
 
-  const filteredUsers = users.filter(u => {
+  // Filter only active users (not deleted)
+  const activeUsers = users.filter(u => {
+    const profile = u.profile as any;
+    return profile.account_status !== 'deleted';
+  });
+
+  const filteredUsers = activeUsers.filter(u => {
     const searchLower = search.toLowerCase();
     const profile = u.profile as any;
     return (
@@ -115,12 +139,13 @@ export default function UserManagement() {
     setActionLoading(true);
     
     try {
-      // Deactivate by disabling all communication channels
+      // Deactivate by disabling all communication channels and setting status
       const { error } = await supabase
         .from('profiles')
         .update({
           allow_whatsapp: false,
           allow_telegram: false,
+          account_status: 'disabled',
         })
         .eq('user_id', selectedUserForAction.profile.user_id);
 
@@ -128,7 +153,7 @@ export default function UserManagement() {
 
       toast({ 
         title: 'تم تعطيل الحساب',
-        description: 'تم إيقاف قنوات التواصل للمستخدم. لن يتلقى أي تنبيهات.',
+        description: 'تم إيقاف قنوات التواصل للمستخدم ولن يتمكن من تسجيل الدخول.',
       });
       setDeactivateDialogOpen(false);
       refetch();
@@ -151,10 +176,10 @@ export default function UserManagement() {
     try {
       const userId = selectedUserForAction.profile.user_id;
       
-      // Delete profile first (will cascade or we handle related data)
+      // Mark as deleted (soft delete) and disable login
       const { error: profileError } = await supabase
         .from('profiles')
-        .delete()
+        .update({ account_status: 'deleted', allow_whatsapp: false, allow_telegram: false })
         .eq('user_id', userId);
 
       if (profileError) throw profileError;
@@ -196,6 +221,144 @@ export default function UserManagement() {
     setDeleteDialogOpen(true);
   };
 
+  // Bulk selection handlers
+  const toggleUserSelection = (userId: string) => {
+    setSelectedUsers(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(userId)) {
+        newSet.delete(userId);
+      } else {
+        newSet.add(userId);
+      }
+      return newSet;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedUsers.size === filteredUsers.length) {
+      setSelectedUsers(new Set());
+    } else {
+      setSelectedUsers(new Set(filteredUsers.map(u => (u.profile as any).user_id)));
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedUsers.size === 0) return;
+    setBulkDeleting(true);
+
+    try {
+      const userIds = Array.from(selectedUsers);
+      
+      // Mark all as deleted (hard delete via account_status)
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({ account_status: 'deleted', allow_whatsapp: false, allow_telegram: false })
+        .in('user_id', userIds);
+
+      if (profileError) throw profileError;
+
+      // Delete roles
+      const { error: roleError } = await supabase
+        .from('user_roles')
+        .delete()
+        .in('user_id', userIds);
+
+      if (roleError) console.warn('Bulk role deletion warning:', roleError);
+
+      toast({
+        title: 'تم الحذف الجماعي',
+        description: `تم حذف ${selectedUsers.size} مستخدم بنجاح.`,
+        variant: 'destructive',
+      });
+      setSelectedUsers(new Set());
+      setBulkDeleteDialogOpen(false);
+      refetch();
+    } catch (error: any) {
+      toast({
+        title: 'خطأ في الحذف الجماعي',
+        description: error.message,
+        variant: 'destructive',
+      });
+    } finally {
+      setBulkDeleting(false);
+    }
+  };
+
+  // Add user handler
+  const handleAddUser = async () => {
+    if (!newUserForm.full_name || !newUserForm.email) {
+      toast({ title: 'خطأ', description: 'الاسم والبريد الإلكتروني مطلوبان', variant: 'destructive' });
+      return;
+    }
+    
+    setAddingUser(true);
+    try {
+      // Check if email exists
+      const { data: existingEmail } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('email', newUserForm.email)
+        .maybeSingle();
+      
+      if (existingEmail) {
+        toast({ title: 'خطأ', description: 'البريد الإلكتروني موجود مسبقاً', variant: 'destructive' });
+        return;
+      }
+
+      // Create user via edge function
+      const password = newUserForm.password || Math.random().toString(36).slice(-10);
+      const { data, error } = await supabase.functions.invoke('import-user', {
+        body: {
+          fullname: newUserForm.full_name,
+          email: newUserForm.email,
+          phone: newUserForm.phone,
+          employee_number: newUserForm.employee_number,
+          role: newUserForm.role,
+          password,
+          must_change_password: true,
+        }
+      });
+
+      if (error) throw error;
+
+      // Link to department if selected
+      if (newUserForm.department_id && data?.user_id) {
+        await addUserToDepartment.mutateAsync({
+          userId: data.user_id,
+          departmentId: newUserForm.department_id,
+          scopeType: 'primary',
+        });
+      }
+
+      toast({
+        title: 'تم إضافة المستخدم',
+        description: `كلمة المرور المؤقتة: ${password}`,
+      });
+      setAddUserDialogOpen(false);
+      setNewUserForm({
+        full_name: '',
+        email: '',
+        phone: '',
+        employee_number: '',
+        role: 'employee',
+        department_id: '',
+        password: '',
+      });
+      refetch();
+    } catch (error: any) {
+      toast({ title: 'خطأ في الإضافة', description: error.message, variant: 'destructive' });
+    } finally {
+      setAddingUser(false);
+    }
+  };
+
+  const getAccountStatusBadge = (status: string | null) => {
+    if (status === 'disabled') {
+      return <Badge variant="secondary" className="bg-orange-100 text-orange-700 border-orange-200">معطّل</Badge>;
+    }
+    return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">نشط</Badge>;
+  };
+
   return (
     <div className="space-y-6" dir="rtl">
       <div className="flex items-center justify-between">
@@ -203,10 +366,28 @@ export default function UserManagement() {
           <h1 className="text-2xl font-bold">إدارة المستخدمين</h1>
           <p className="text-muted-foreground">عرض وتعديل بيانات المستخدمين وقنوات التواصل</p>
         </div>
-        <Badge variant="outline" className="gap-1">
-          <Users className="h-4 w-4" />
-          {users.length} مستخدم
-        </Badge>
+        <div className="flex gap-2">
+          {isSystemAdmin && selectedUsers.size > 0 && (
+            <Button 
+              variant="destructive" 
+              onClick={() => setBulkDeleteDialogOpen(true)}
+              className="gap-1"
+            >
+              <Trash2 className="h-4 w-4" />
+              حذف المحددين ({selectedUsers.size})
+            </Button>
+          )}
+          {isSystemAdmin && (
+            <Button onClick={() => setAddUserDialogOpen(true)} className="gap-1">
+              <UserPlus className="h-4 w-4" />
+              إضافة مستخدم
+            </Button>
+          )}
+          <Badge variant="outline" className="gap-1">
+            <Users className="h-4 w-4" />
+            {activeUsers.length} مستخدم
+          </Badge>
+        </div>
       </div>
 
       {/* Stats */}
@@ -216,7 +397,7 @@ export default function UserManagement() {
             <CardTitle className="text-sm font-medium text-muted-foreground">إجمالي المستخدمين</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{users.length}</div>
+            <div className="text-2xl font-bold">{activeUsers.length}</div>
           </CardContent>
         </Card>
         <Card>
@@ -225,7 +406,7 @@ export default function UserManagement() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">
-              {users.filter(u => (u.profile as any).allow_whatsapp).length}
+              {activeUsers.filter(u => (u.profile as any).allow_whatsapp).length}
             </div>
           </CardContent>
         </Card>
@@ -235,17 +416,17 @@ export default function UserManagement() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-blue-600">
-              {users.filter(u => (u.profile as any).allow_telegram).length}
+              {activeUsers.filter(u => (u.profile as any).allow_telegram).length}
             </div>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">بدون قنوات</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">حسابات معطّلة</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-muted-foreground">
-              {users.filter(u => !(u.profile as any).allow_whatsapp && !(u.profile as any).allow_telegram).length}
+            <div className="text-2xl font-bold text-orange-600">
+              {activeUsers.filter(u => (u.profile as any).account_status === 'disabled').length}
             </div>
           </CardContent>
         </Card>
@@ -281,10 +462,19 @@ export default function UserManagement() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  {isSystemAdmin && (
+                    <TableHead className="w-12">
+                      <Checkbox
+                        checked={selectedUsers.size === filteredUsers.length && filteredUsers.length > 0}
+                        onCheckedChange={toggleSelectAll}
+                      />
+                    </TableHead>
+                  )}
                   <TableHead>المستخدم</TableHead>
                   <TableHead>رقم الموظف</TableHead>
                   <TableHead>الجوال</TableHead>
                   <TableHead>الدور</TableHead>
+                  <TableHead>الحالة</TableHead>
                   <TableHead>قنوات التواصل</TableHead>
                   {canEdit && <TableHead>الإجراءات</TableHead>}
                 </TableRow>
@@ -292,8 +482,17 @@ export default function UserManagement() {
               <TableBody>
                 {filteredUsers.map((user) => {
                   const profile = user.profile as any;
+                  const isSelected = selectedUsers.has(profile.user_id);
                   return (
-                    <TableRow key={profile.user_id}>
+                    <TableRow key={profile.user_id} className={isSelected ? 'bg-primary/5' : ''}>
+                      {isSystemAdmin && (
+                        <TableCell>
+                          <Checkbox
+                            checked={isSelected}
+                            onCheckedChange={() => toggleUserSelection(profile.user_id)}
+                          />
+                        </TableCell>
+                      )}
                       <TableCell>
                         <div className="flex items-center gap-3">
                           <Avatar className="h-9 w-9">
@@ -313,6 +512,9 @@ export default function UserManagement() {
                         <Badge variant="outline">
                           {ROLE_LABELS[user.role as keyof typeof ROLE_LABELS] || user.role}
                         </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {getAccountStatusBadge(profile.account_status)}
                       </TableCell>
                       <TableCell>
                         <div className="flex gap-2">
@@ -457,12 +659,118 @@ export default function UserManagement() {
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
-              إلغاء
-            </Button>
+            <Button variant="outline" onClick={() => setEditDialogOpen(false)}>إلغاء</Button>
             <Button onClick={handleSaveUser} disabled={saving}>
-              {saving && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
+              {saving ? <Loader2 className="h-4 w-4 animate-spin ml-2" /> : null}
               حفظ
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add User Dialog */}
+      <Dialog open={addUserDialogOpen} onOpenChange={setAddUserDialogOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>إضافة مستخدم جديد</DialogTitle>
+            <DialogDescription>أدخل بيانات المستخدم الجديد</DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label>الاسم الكامل *</Label>
+                <Input
+                  value={newUserForm.full_name}
+                  onChange={(e) => setNewUserForm({ ...newUserForm, full_name: e.target.value })}
+                  placeholder="أحمد محمد"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>البريد الإلكتروني *</Label>
+                <Input
+                  value={newUserForm.email}
+                  onChange={(e) => setNewUserForm({ ...newUserForm, email: e.target.value })}
+                  placeholder="user@example.com"
+                  dir="ltr"
+                  type="email"
+                />
+              </div>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label>رقم الموظف</Label>
+                <Input
+                  value={newUserForm.employee_number}
+                  onChange={(e) => setNewUserForm({ ...newUserForm, employee_number: e.target.value })}
+                  placeholder="EMP001"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>رقم الجوال</Label>
+                <Input
+                  value={newUserForm.phone}
+                  onChange={(e) => setNewUserForm({ ...newUserForm, phone: e.target.value })}
+                  placeholder="966xxxxxxxxx"
+                  dir="ltr"
+                />
+              </div>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label>الدور</Label>
+                <Select
+                  value={newUserForm.role}
+                  onValueChange={(value) => setNewUserForm({ ...newUserForm, role: value as AppRole })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="employee">موظف</SelectItem>
+                    <SelectItem value="supervisor">مشرف</SelectItem>
+                    <SelectItem value="hr_user">مستخدم HR</SelectItem>
+                    <SelectItem value="admin">مسؤول</SelectItem>
+                    {isSystemAdmin && <SelectItem value="system_admin">مدير النظام</SelectItem>}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>القسم</Label>
+                <Select
+                  value={newUserForm.department_id}
+                  onValueChange={(value) => setNewUserForm({ ...newUserForm, department_id: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="اختر القسم" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {departments.map((dept) => (
+                      <SelectItem key={dept.id} value={dept.id}>{dept.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>كلمة المرور (اختياري - سيتم توليدها تلقائياً)</Label>
+              <Input
+                value={newUserForm.password}
+                onChange={(e) => setNewUserForm({ ...newUserForm, password: e.target.value })}
+                placeholder="اتركها فارغة لتوليد كلمة مرور عشوائية"
+                type="password"
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAddUserDialogOpen(false)}>إلغاء</Button>
+            <Button onClick={handleAddUser} disabled={addingUser}>
+              {addingUser ? <Loader2 className="h-4 w-4 animate-spin ml-2" /> : <UserPlus className="h-4 w-4 ml-2" />}
+              إضافة
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -472,35 +780,29 @@ export default function UserManagement() {
       <AlertDialog open={deactivateDialogOpen} onOpenChange={setDeactivateDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2 text-orange-600">
-              <UserX className="h-5 w-5" />
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-orange-500" />
               تعطيل حساب المستخدم
             </AlertDialogTitle>
             <AlertDialogDescription>
-              <div className="space-y-2">
-                <p>
-                  هل تريد تعطيل حساب <strong>{selectedUserForAction?.profile?.full_name}</strong>؟
-                </p>
-                <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 text-sm">
-                  <p className="font-medium text-orange-800">ماذا سيحدث:</p>
-                  <ul className="list-disc list-inside text-orange-700 mt-1">
-                    <li>سيتم إيقاف جميع قنوات التواصل (واتساب، تيليجرام)</li>
-                    <li>لن يتلقى المستخدم أي تنبيهات</li>
-                    <li>ستبقى بياناته وسجلاته محفوظة</li>
-                    <li>يمكن إعادة تفعيله لاحقاً</li>
-                  </ul>
-                </div>
-              </div>
+              هل أنت متأكد من تعطيل حساب <strong>{selectedUserForAction?.profile.full_name}</strong>؟
+              <br /><br />
+              سيتم:
+              <ul className="list-disc list-inside mt-2 space-y-1">
+                <li>إيقاف جميع قنوات التواصل (واتساب وتيليجرام)</li>
+                <li>منع المستخدم من تسجيل الدخول</li>
+                <li>الاحتفاظ بالسجلات والبيانات المرتبطة</li>
+              </ul>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>إلغاء</AlertDialogCancel>
-            <AlertDialogAction 
+            <AlertDialogCancel disabled={actionLoading}>إلغاء</AlertDialogCancel>
+            <AlertDialogAction
               onClick={handleDeactivateUser}
-              className="bg-orange-500 hover:bg-orange-600"
               disabled={actionLoading}
+              className="bg-orange-500 hover:bg-orange-600"
             >
-              {actionLoading && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
+              {actionLoading ? <Loader2 className="h-4 w-4 animate-spin ml-2" /> : <UserX className="h-4 w-4 ml-2" />}
               تعطيل الحساب
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -512,34 +814,64 @@ export default function UserManagement() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2 text-destructive">
-              <AlertTriangle className="h-5 w-5" />
+              <Trash2 className="h-5 w-5" />
               حذف حساب المستخدم نهائياً
             </AlertDialogTitle>
             <AlertDialogDescription>
-              <div className="space-y-2">
-                <p>
-                  هل أنت متأكد من حذف حساب <strong>{selectedUserForAction?.profile?.full_name}</strong>؟
-                </p>
-                <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-3 text-sm">
-                  <p className="font-medium text-destructive">تحذير - لا يمكن التراجع:</p>
-                  <ul className="list-disc list-inside text-destructive/80 mt-1">
-                    <li>سيتم حذف بيانات المستخدم من النظام</li>
-                    <li>قد تتأثر العناصر والتقييمات المرتبطة به</li>
-                    <li>لن يمكن استعادة البيانات</li>
-                  </ul>
-                </div>
-              </div>
+              هل أنت متأكد من حذف حساب <strong>{selectedUserForAction?.profile.full_name}</strong>؟
+              <br /><br />
+              سيتم:
+              <ul className="list-disc list-inside mt-2 space-y-1 text-destructive">
+                <li>حذف بيانات المستخدم نهائياً</li>
+                <li>حذف صلاحيات المستخدم</li>
+                <li>قد يؤثر على العناصر والتذكيرات المرتبطة</li>
+              </ul>
+              <p className="mt-3 font-semibold text-destructive">هذا الإجراء لا يمكن التراجع عنه!</p>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>إلغاء</AlertDialogCancel>
-            <AlertDialogAction 
+            <AlertDialogCancel disabled={actionLoading}>إلغاء</AlertDialogCancel>
+            <AlertDialogAction
               onClick={handleDeleteUser}
-              className="bg-destructive hover:bg-destructive/90"
               disabled={actionLoading}
+              className="bg-destructive hover:bg-destructive/90"
             >
-              {actionLoading && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
+              {actionLoading ? <Loader2 className="h-4 w-4 animate-spin ml-2" /> : <Trash2 className="h-4 w-4 ml-2" />}
               حذف نهائي
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Bulk Delete Dialog */}
+      <AlertDialog open={bulkDeleteDialogOpen} onOpenChange={setBulkDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+              <Trash2 className="h-5 w-5" />
+              حذف {selectedUsers.size} مستخدم
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              هل أنت متأكد من حذف <strong>{selectedUsers.size}</strong> مستخدم؟
+              <br /><br />
+              سيتم:
+              <ul className="list-disc list-inside mt-2 space-y-1 text-destructive">
+                <li>حذف بيانات المستخدمين نهائياً</li>
+                <li>حذف صلاحيات جميع المستخدمين المحددين</li>
+                <li>قد يؤثر على العناصر والتذكيرات المرتبطة</li>
+              </ul>
+              <p className="mt-3 font-semibold text-destructive">هذا الإجراء لا يمكن التراجع عنه!</p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={bulkDeleting}>إلغاء</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleBulkDelete}
+              disabled={bulkDeleting}
+              className="bg-destructive hover:bg-destructive/90"
+            >
+              {bulkDeleting ? <Loader2 className="h-4 w-4 animate-spin ml-2" /> : <Trash2 className="h-4 w-4 ml-2" />}
+              حذف {selectedUsers.size} مستخدم
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

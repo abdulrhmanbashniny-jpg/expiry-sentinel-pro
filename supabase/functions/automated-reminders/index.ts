@@ -283,6 +283,7 @@ serve(async (req) => {
                   sent_at: new Date().toISOString(),
                   status: 'sent',
                   provider_message_id: result.result.message_id.toString(),
+                  channel: 'telegram',
                 });
 
                 // Update rate limit
@@ -360,6 +361,7 @@ serve(async (req) => {
                   sent_at: new Date().toISOString(),
                   status: 'sent',
                   provider_message_id: result.key?.id || result.messageId || null,
+                  channel: 'whatsapp',
                 });
 
                 // Update rate limit
@@ -393,6 +395,7 @@ serve(async (req) => {
               scheduled_for: new Date().toISOString(),
               status: 'failed',
               error_message: error.message,
+              channel: 'whatsapp',
             });
             results.failed++;
           }
