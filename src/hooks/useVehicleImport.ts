@@ -33,12 +33,12 @@ const COLUMN_MAPPING: Record<string, string> = {
   'الفئة': 'category_name',
 };
 
-// Reminder types for vehicle items
-const REMINDER_TYPES = [
-  { key: 'license_expiry', label: 'رخصة السير', dateField: 'license_expiry' },
-  { key: 'inspection_expiry', label: 'الفحص', dateField: 'inspection_expiry' },
-  { key: 'insurance_expiry', label: 'التأمين', dateField: 'insurance_expiry' },
-];
+// Deadline types for vehicle items
+const DEADLINE_TYPES = [
+  { key: 'license', label: 'رخصة السير', dateField: 'license_expiry' },
+  { key: 'inspection', label: 'الفحص', dateField: 'inspection_expiry' },
+  { key: 'insurance', label: 'التأمين', dateField: 'insurance_expiry' },
+] as const;
 
 export interface VehicleImportRow {
   title: string;
@@ -70,7 +70,7 @@ export interface ImportResult {
   success: number;
   failed: number;
   errors: Array<{ row: number; error: string; data?: unknown }>;
-  imported: Array<{ serial_number: string; items_created: number }>;
+  imported: Array<{ serial_number: string; deadlines_created: number }>;
 }
 
 export const useVehicleImport = () => {
@@ -163,7 +163,13 @@ export const useVehicleImport = () => {
             continue;
           }
 
-          // Check for duplicate serial number
+          if (!vehicle.plate_number) {
+            results.errors.push({ row: rowNumber, error: 'رقم اللوحة مطلوب', data: vehicle });
+            results.failed++;
+            continue;
+          }
+
+          // Check for duplicate serial number in existing items
           const { data: existingItem } = await supabase
             .from('items')
             .select('id')
@@ -176,7 +182,7 @@ export const useVehicleImport = () => {
             continue;
           }
 
-          // Find reminder rule
+          // Find reminder rule (REQUIRED)
           let reminderRuleId: string | null = null;
           if (vehicle.reminder_rule_name && reminderRules) {
             const rule = reminderRules.find(r => 
@@ -208,6 +214,7 @@ export const useVehicleImport = () => {
 
           // Parse recipients
           const recipientIds: string[] = [];
+          const recipientWarnings: string[] = [];
           if (vehicle.recipients && existingRecipients) {
             const phoneNumbers = vehicle.recipients.split(',').map(p => p.trim()).filter(Boolean);
             for (const phone of phoneNumbers) {
@@ -215,7 +222,7 @@ export const useVehicleImport = () => {
               if (recipient) {
                 recipientIds.push(recipient.id);
               } else {
-                // Create new recipient
+                // Create new recipient if not found
                 const { data: newRecipient, error: recipientError } = await supabase
                   .from('recipients')
                   .insert({
@@ -229,6 +236,8 @@ export const useVehicleImport = () => {
                 if (!recipientError && newRecipient) {
                   recipientIds.push(newRecipient.id);
                   existingRecipients.push({ id: newRecipient.id, whatsapp_number: phone, name: phone });
+                } else {
+                  recipientWarnings.push(`لم يتم العثور على المستلم: ${phone}`);
                 }
               }
             }
@@ -236,6 +245,7 @@ export const useVehicleImport = () => {
 
           // Find responsible person
           let responsiblePerson = '';
+          let responsibleWarning = '';
           if (vehicle.responsible_phone) {
             const { data: profile } = await supabase
               .from('profiles')
@@ -246,8 +256,7 @@ export const useVehicleImport = () => {
             if (profile) {
               responsiblePerson = profile.full_name || vehicle.responsible_phone;
             } else {
-              // Log warning but continue
-              console.warn(`Row ${rowNumber}: Responsible phone ${vehicle.responsible_phone} not found in profiles`);
+              responsibleWarning = `المسؤول ${vehicle.responsible_phone} غير موجود في النظام`;
               responsiblePerson = vehicle.responsible_phone;
             }
           }
@@ -271,87 +280,128 @@ export const useVehicleImport = () => {
           // Determine item status
           const itemStatus = vehicle.item_status === 'موقوف' ? 'archived' : 'active';
 
-          // Create items for each reminder type (license, inspection, insurance)
-          let itemsCreated = 0;
-
-          for (const reminderType of REMINDER_TYPES) {
-            const dateValue = vehicle[reminderType.dateField as keyof VehicleImportRow] as string | undefined;
+          // Find the earliest deadline date to use as item's expiry_date
+          const deadlineDates: { type: string; label: string; date: string }[] = [];
+          
+          for (const deadlineType of DEADLINE_TYPES) {
+            const dateValue = vehicle[deadlineType.dateField as keyof VehicleImportRow] as string | undefined;
             
-            if (!dateValue) continue; // Skip if no date provided
-
-            // Convert date
-            const convertedDate = convertDate(dateValue, vehicle.date_type);
-            if (!convertedDate) {
-              results.errors.push({ 
-                row: rowNumber, 
-                error: `تاريخ ${reminderType.label} غير صالح: ${dateValue}`, 
-                data: vehicle 
-              });
-              continue;
+            if (dateValue) {
+              const convertedDate = convertDate(dateValue, vehicle.date_type);
+              if (convertedDate) {
+                deadlineDates.push({
+                  type: deadlineType.key,
+                  label: deadlineType.label,
+                  date: convertedDate,
+                });
+              } else {
+                results.errors.push({ 
+                  row: rowNumber, 
+                  error: `تاريخ ${deadlineType.label} غير صالح: ${dateValue}`, 
+                  data: vehicle 
+                });
+              }
             }
-
-            // Create item
-            const itemTitle = `${vehicle.title || vehicle.plate_number} - ${reminderType.label}`;
-            
-            const { data: newItem, error: itemError } = await supabase
-              .from('items')
-              .insert({
-                title: itemTitle,
-                category_id: categoryId,
-                expiry_date: convertedDate,
-                expiry_time: '07:00', // Fixed 7 AM Saudi time
-                department_id: departmentId,
-                owner_department: vehicle.owner_department,
-                responsible_person: responsiblePerson,
-                notes: vehicle.notes,
-                reminder_rule_id: reminderRuleId,
-                status: itemStatus,
-                created_by_user_id: user.id,
-                dynamic_fields: {
-                  ...dynamicFields,
-                  reminder_type: reminderType.key,
-                  reminder_label: reminderType.label,
-                },
-              })
-              .select('id')
-              .single();
-
-            if (itemError) {
-              results.errors.push({ 
-                row: rowNumber, 
-                error: `خطأ في إنشاء عنصر ${reminderType.label}: ${itemError.message}`, 
-                data: vehicle 
-              });
-              continue;
-            }
-
-            // Link recipients
-            if (newItem && recipientIds.length > 0) {
-              const recipientLinks = recipientIds.map(rid => ({
-                item_id: newItem.id,
-                recipient_id: rid,
-              }));
-
-              await supabase.from('item_recipients').insert(recipientLinks);
-            }
-
-            itemsCreated++;
           }
 
-          if (itemsCreated > 0) {
-            results.success++;
-            results.imported.push({ 
-              serial_number: vehicle.serial_number, 
-              items_created: itemsCreated 
-            });
-          } else {
+          if (deadlineDates.length === 0) {
             results.errors.push({ 
               row: rowNumber, 
-              error: 'لم يتم إنشاء أي عناصر - تأكد من وجود تواريخ صالحة', 
+              error: 'لا يوجد تواريخ صالحة للتذكيرات (رخصة/فحص/تأمين)', 
               data: vehicle 
             });
             results.failed++;
+            continue;
           }
+
+          // Use earliest date as the main item expiry
+          const earliestDate = deadlineDates.reduce((min, curr) => 
+            curr.date < min.date ? curr : min
+          );
+
+          // Create ONE item for the vehicle
+          const itemTitle = vehicle.title || `${vehicle.brand || ''} ${vehicle.model || ''} - ${vehicle.plate_number}`.trim();
+          
+          const { data: newItem, error: itemError } = await supabase
+            .from('items')
+            .insert({
+              title: itemTitle,
+              category_id: categoryId,
+              expiry_date: earliestDate.date,
+              expiry_time: '07:00', // Fixed 7 AM Saudi time
+              department_id: departmentId,
+              owner_department: vehicle.owner_department,
+              responsible_person: responsiblePerson,
+              notes: vehicle.notes,
+              reminder_rule_id: reminderRuleId,
+              status: itemStatus,
+              created_by_user_id: user.id,
+              dynamic_fields: dynamicFields,
+            })
+            .select('id')
+            .single();
+
+          if (itemError) {
+            results.errors.push({ 
+              row: rowNumber, 
+              error: `خطأ في إنشاء المركبة: ${itemError.message}`, 
+              data: vehicle 
+            });
+            results.failed++;
+            continue;
+          }
+
+          // Create deadlines in item_deadlines table
+          let deadlinesCreated = 0;
+          for (const deadline of deadlineDates) {
+            const { error: deadlineError } = await supabase
+              .from('item_deadlines')
+              .insert({
+                item_id: newItem.id,
+                deadline_type: deadline.type,
+                deadline_label: deadline.label,
+                due_date: deadline.date,
+                status: 'active',
+              });
+
+            if (!deadlineError) {
+              deadlinesCreated++;
+            } else {
+              console.error(`Failed to create deadline ${deadline.type}:`, deadlineError);
+            }
+          }
+
+          // Link recipients to the item
+          if (recipientIds.length > 0) {
+            const recipientLinks = recipientIds.map(rid => ({
+              item_id: newItem.id,
+              recipient_id: rid,
+            }));
+
+            await supabase.from('item_recipients').insert(recipientLinks);
+          }
+
+          // Add warnings to errors if any
+          if (responsibleWarning) {
+            results.errors.push({ 
+              row: rowNumber, 
+              error: `تحذير: ${responsibleWarning} (تم الاستيراد)`, 
+              data: vehicle 
+            });
+          }
+          if (recipientWarnings.length > 0) {
+            results.errors.push({ 
+              row: rowNumber, 
+              error: `تحذير: ${recipientWarnings.join(', ')} (تم الاستيراد)`, 
+              data: vehicle 
+            });
+          }
+
+          results.success++;
+          results.imported.push({ 
+            serial_number: vehicle.serial_number, 
+            deadlines_created: deadlinesCreated 
+          });
 
         } catch (error: unknown) {
           const errorMessage = error instanceof Error ? error.message : 'خطأ غير معروف';
@@ -380,6 +430,7 @@ export const useVehicleImport = () => {
         results: {
           errors: sanitizedErrors,
           imported_count: results.imported.length,
+          total_deadlines_created: results.imported.reduce((sum, r) => sum + r.deadlines_created, 0),
         },
       }]);
 
@@ -387,9 +438,10 @@ export const useVehicleImport = () => {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['items'] });
+      const totalDeadlines = data.imported.reduce((sum, r) => sum + r.deadlines_created, 0);
       toast({
         title: 'تم الاستيراد',
-        description: `تم استيراد ${data.success} مركبة بنجاح${data.failed > 0 ? ` (${data.failed} فشلت)` : ''}`,
+        description: `تم استيراد ${data.success} مركبة (${totalDeadlines} موعد تذكير)${data.failed > 0 ? ` - ${data.failed} فشلت` : ''}`,
       });
     },
     onError: (error) => {
