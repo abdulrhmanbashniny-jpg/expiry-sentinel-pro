@@ -149,30 +149,39 @@ serve(async (req) => {
       skipped: 0,
       failed: 0,
       rate_limited: 0,
+      deadlines_processed: 0,
       errors: [] as string[],
     };
 
-    // 4. Process each item
-    for (const item of items || []) {
+    const PUBLISHED_APP_URL = 'https://expiry-sentinel-pro.lovable.app';
+
+    // Helper function to send notifications for a specific due date
+    async function processReminder(
+      item: any,
+      dueDate: string,
+      deadlineLabel: string | null,
+      deadlineId: string | null
+    ) {
       const reminderRule = item.reminder_rule as any;
       if (!reminderRule || !reminderRule.is_active) {
-        continue;
+        return;
       }
 
-      const expiryDate = new Date(item.expiry_date);
+      const expiryDate = new Date(dueDate);
       expiryDate.setHours(0, 0, 0, 0);
       const daysUntilExpiry = Math.ceil((expiryDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 
       // Check reminder rules
       const daysBefore = reminderRule.days_before as number[];
       if (!daysBefore.includes(daysUntilExpiry)) {
-        continue;
+        return;
       }
 
       results.processed++;
-      console.log(`Processing: ${item.title} (${daysUntilExpiry} days until expiry)`);
+      const itemLabel = deadlineLabel ? `${item.title} - ${deadlineLabel}` : item.title;
+      console.log(`Processing: ${itemLabel} (${daysUntilExpiry} days until expiry)`);
 
-      // 5. Get recipients for item
+      // Get recipients for item
       const { data: itemRecipients } = await supabase
         .from('item_recipients')
         .select(`
@@ -185,26 +194,26 @@ serve(async (req) => {
         .filter(r => r && (r as any).is_active) || [];
 
       if (activeRecipients.length === 0) {
-        console.log(`No active recipients for: ${item.title}`);
-        continue;
+        console.log(`No active recipients for: ${itemLabel}`);
+        return;
       }
 
-      // Prepare message data (common for both channels)
-      const PUBLISHED_APP_URL = 'https://expiry-sentinel-pro.lovable.app';
+      // Prepare message data
       const remainingText = daysUntilExpiry === 0 ? 'اليوم' : 
                            daysUntilExpiry === 1 ? 'غداً' : 
                            `${daysUntilExpiry} يوم`;
 
       const messageData = {
-        title: item.title,
+        title: deadlineLabel ? `${item.title} - ${deadlineLabel}` : item.title,
         item_code: item.ref_number || '-',
         ref_number: item.ref_number || '-',
         item_title: item.title,
+        deadline_type: deadlineLabel || '',
         department_name: (item.department as any)?.name || '-',
         category: (item.category as any)?.name || '-',
         category_name: (item.category as any)?.name || '-',
-        due_date: item.expiry_date,
-        expiry_date: item.expiry_date,
+        due_date: dueDate,
+        expiry_date: dueDate,
         remaining_text: remainingText,
         days_left: daysUntilExpiry,
         creator_note: item.notes || '',
@@ -216,12 +225,15 @@ serve(async (req) => {
         dynamic_fields: item.dynamic_fields || {},
       };
 
-      // 6. Send to each recipient
+      // Send to each recipient
       for (const recipient of activeRecipients) {
         const r = recipient as any;
-
-        // Add recipient name to message data
         const recipientMessageData = { ...messageData, recipient_name: r.name };
+
+        // Create unique identifier for this notification (include deadline_id if exists)
+        const notificationKey = deadlineId 
+          ? `${item.id}_${deadlineId}_${r.id}_${daysUntilExpiry}` 
+          : `${item.id}_${r.id}_${daysUntilExpiry}`;
 
         // Check for duplicate notification today
         const { data: existingLog } = await supabase
@@ -235,7 +247,7 @@ serve(async (req) => {
           .maybeSingle();
 
         if (existingLog) {
-          console.log(`Skipping duplicate: ${item.title} -> ${r.name}`);
+          console.log(`Skipping duplicate: ${itemLabel} -> ${r.name}`);
           results.skipped++;
           continue;
         }
@@ -294,7 +306,6 @@ serve(async (req) => {
                     p_date: todayStr
                   });
                 } catch {
-                  // Fallback: upsert directly
                   await supabase.from('rate_limits').upsert({
                     channel: 'telegram',
                     recipient_id: r.id,
@@ -305,7 +316,7 @@ serve(async (req) => {
                 }
 
                 results.telegram_sent++;
-                console.log(`✅ Telegram sent to ${r.name}`);
+                console.log(`✅ Telegram sent to ${r.name} for ${itemLabel}`);
               } else {
                 throw new Error(result.description || 'Telegram API error');
               }
@@ -378,7 +389,7 @@ serve(async (req) => {
                 }
 
                 results.whatsapp_sent++;
-                console.log(`✅ WhatsApp sent to ${r.name}`);
+                console.log(`✅ WhatsApp sent to ${r.name} for ${itemLabel}`);
               } else {
                 throw new Error(result.message || 'WhatsApp API error');
               }
@@ -400,6 +411,35 @@ serve(async (req) => {
             results.failed++;
           }
         }
+      }
+
+      // Update deadline's last_reminder_sent_at if applicable
+      if (deadlineId) {
+        await supabase
+          .from('item_deadlines')
+          .update({ last_reminder_sent_at: new Date().toISOString() })
+          .eq('id', deadlineId);
+      }
+    }
+
+    // 4. Process each item
+    for (const item of items || []) {
+      // First check for item_deadlines (for vehicles with multiple deadlines)
+      const { data: itemDeadlines } = await supabase
+        .from('item_deadlines')
+        .select('id, deadline_type, deadline_label, due_date, status')
+        .eq('item_id', item.id)
+        .eq('status', 'active');
+
+      if (itemDeadlines && itemDeadlines.length > 0) {
+        // Process each deadline separately
+        for (const deadline of itemDeadlines) {
+          results.deadlines_processed++;
+          await processReminder(item, deadline.due_date, deadline.deadline_label, deadline.id);
+        }
+      } else {
+        // Process item's main expiry_date (legacy behavior for non-vehicle items)
+        await processReminder(item, item.expiry_date, null, null);
       }
     }
 

@@ -958,6 +958,50 @@ export type Database = {
         }
         Relationships: []
       }
+      item_deadlines: {
+        Row: {
+          created_at: string
+          deadline_label: string
+          deadline_type: string
+          due_date: string
+          id: string
+          item_id: string
+          last_reminder_sent_at: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          deadline_label: string
+          deadline_type: string
+          due_date: string
+          id?: string
+          item_id: string
+          last_reminder_sent_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          deadline_label?: string
+          deadline_type?: string
+          due_date?: string
+          id?: string
+          item_id?: string
+          last_reminder_sent_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "item_deadlines_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       item_recipients: {
         Row: {
           created_at: string
