@@ -11,6 +11,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Checkbox } from '@/components/ui/checkbox';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useItems } from '@/hooks/useItems';
 import { useCategories } from '@/hooks/useCategories';
 import { useRecipients } from '@/hooks/useRecipients';
@@ -19,13 +20,16 @@ import { useDepartments } from '@/hooks/useDepartments';
 import { useTeamManagement } from '@/hooks/useTeamManagement';
 import { useDynamicFields } from '@/hooks/useDynamicFields';
 import { useAuth } from '@/contexts/AuthContext';
-import { CalendarIcon, ArrowRight, Loader2, Clock, AlertTriangle, Building2, User, Users, ListPlus } from 'lucide-react';
+import { CalendarIcon, ArrowRight, Loader2, Clock, AlertTriangle, Building2, User, Users, ListPlus, FileSpreadsheet } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
+import VehicleImportDialogContent from '@/components/items/VehicleImportDialog';
 
 const NewItem: React.FC = () => {
   const navigate = useNavigate();
-  const { user, role, isEmployee, isSupervisor } = useAuth();
+  const { user, role, isEmployee, isSupervisor, isAdmin, isSystemAdmin } = useAuth();
+  const canImport = isAdmin || isSystemAdmin || role === 'supervisor';
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
   const { createItem } = useItems();
   const { categories } = useCategories();
   const { recipients } = useRecipients();
@@ -208,14 +212,40 @@ const NewItem: React.FC = () => {
 
   return (
     <div className="animate-fade-in space-y-6">
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => navigate('/items')}>
-          <ArrowRight className="h-5 w-5" />
-        </Button>
-        <div>
-          <h1 className="text-2xl font-bold">إضافة عنصر جديد</h1>
-          <p className="text-muted-foreground">أضف ترخيص أو عقد أو وثيقة جديدة</p>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="icon" onClick={() => navigate('/items')}>
+            <ArrowRight className="h-5 w-5" />
+          </Button>
+          <div>
+            <h1 className="text-2xl font-bold">إضافة عنصر جديد</h1>
+            <p className="text-muted-foreground">أضف ترخيص أو عقد أو وثيقة جديدة</p>
+          </div>
         </div>
+        
+        {/* Excel Import Button - Only for admins and supervisors */}
+        {canImport && (
+          <Dialog open={importDialogOpen} onOpenChange={setImportDialogOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" className="gap-2">
+                <FileSpreadsheet className="h-4 w-4" />
+                استيراد من Excel
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl">
+              <DialogHeader>
+                <DialogTitle>استيراد مركبات من Excel</DialogTitle>
+              </DialogHeader>
+              <VehicleImportDialogContent 
+                onSuccess={() => {
+                  setImportDialogOpen(false);
+                  navigate('/items');
+                }}
+                onCancel={() => setImportDialogOpen(false)}
+              />
+            </DialogContent>
+          </Dialog>
+        )}
       </div>
 
       {validationError && (
