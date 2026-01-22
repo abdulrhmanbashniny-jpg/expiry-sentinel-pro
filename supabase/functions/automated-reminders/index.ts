@@ -327,13 +327,16 @@ serve(async (req) => {
           }
         }
 
-        // Try WhatsApp as fallback or primary
+        // Try WhatsApp - IMPORTANT: Both Telegram and WhatsApp should be attempted independently
         if (r.whatsapp_number && whatsappConfig?.is_active && whatsappTemplate) {
           try {
             const message = applyTemplate(whatsappTemplate.template_text, recipientMessageData);
             const waConfig = whatsappConfig.config as any;
+            
+            // Support both 'apikey' and 'access_token' config keys for backward compatibility
+            const apiKey = waConfig?.apikey || waConfig?.access_token;
 
-            if (waConfig?.api_base_url && waConfig?.apikey && waConfig?.instance_name) {
+            if (waConfig?.api_base_url && apiKey && waConfig?.instance_name) {
               // Format phone number for WhatsApp
               let phone = r.whatsapp_number.replace(/\D/g, '');
               if (phone.startsWith('05')) {
@@ -344,6 +347,8 @@ serve(async (req) => {
                 phone = phone.substring(1);
               }
               const jid = `${phone}@s.whatsapp.net`;
+              
+              console.log('Attempting WhatsApp send:', { phone, instance: waConfig.instance_name });
 
               const result = await withRetry(async () => {
                 const response = await fetch(
@@ -352,11 +357,11 @@ serve(async (req) => {
                     method: 'POST',
                     headers: {
                       'Content-Type': 'application/json',
-                      'apikey': waConfig.apikey,
+                      'apikey': apiKey,
                     },
                     body: JSON.stringify({
                       number: jid,
-                      text: message,
+                      textMessage: { text: message },
                     }),
                   }
                 );

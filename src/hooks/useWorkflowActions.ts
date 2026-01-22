@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { WorkflowStatus, WORKFLOW_STATUS_LABELS } from '@/hooks/useDashboardData';
+import { sendFinishNotification } from '@/hooks/useFinishNotification';
 
 export type { WorkflowStatus };
 export { WORKFLOW_STATUS_LABELS };
@@ -206,6 +207,24 @@ export const useWorkflowAction = () => {
 
       if (logError) {
         console.error('Error logging status change:', logError);
+      }
+
+      // Send finish notification if status is now 'finished'
+      if (transition.to === 'finished') {
+        console.log('Sending finish notification for item:', itemId);
+        const { data: itemData } = await supabase
+          .from('items')
+          .select('title, ref_number')
+          .eq('id', itemId)
+          .single();
+        
+        if (itemData) {
+          await sendFinishNotification({
+            itemId,
+            itemTitle: itemData.title,
+            refNumber: itemData.ref_number || undefined,
+          });
+        }
       }
 
       return { newStatus: transition.to };

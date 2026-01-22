@@ -60,11 +60,16 @@ export interface Item {
   category_id: string | null;
   expiry_date: string;
   expiry_time: string | null;
+  department_id: string | null;
   owner_department: string | null;
   responsible_person: string | null;
   notes: string | null;
   attachment_url: string | null;
   status: ItemStatus;
+  workflow_status: string;
+  is_recurring: boolean;
+  parent_item_id: string | null;
+  dynamic_fields: Record<string, any> | null;
   reminder_rule_id: string | null;
   created_by_user_id: string | null;
   created_at: string;

@@ -13,6 +13,7 @@ import { Integration } from '@/types/database';
 import { format } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import WhatsAppTestSection from '@/components/integrations/WhatsAppTestSection';
 
 const INTEGRATION_ICONS: Record<string, React.ElementType> = {
   n8n: Workflow,
@@ -476,6 +477,9 @@ export default function Integrations() {
             );
           })}
         </div>
+
+        {/* WhatsApp Test Section */}
+        <WhatsAppTestSection />
 
         {/* Quick Links */}
         <Card>
