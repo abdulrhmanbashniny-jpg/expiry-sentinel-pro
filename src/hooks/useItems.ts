@@ -134,10 +134,13 @@ export const useItems = () => {
   });
 
   const updateItem = useMutation({
-    mutationFn: async ({ id, ...data }: Partial<Item> & { id: string }) => {
+    mutationFn: async ({ id, ...data }: Partial<Item> & { id: string; recipient_ids?: string[] }) => {
+      // Remove recipient_ids from data before update
+      const { recipient_ids, ...updateData } = data as any;
+      
       const { data: item, error } = await supabase
         .from('items')
-        .update(data)
+        .update(updateData)
         .eq('id', id)
         .select()
         .single();
