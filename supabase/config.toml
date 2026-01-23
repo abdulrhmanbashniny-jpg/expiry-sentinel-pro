@@ -83,3 +83,6 @@ verify_jwt = true
 
 [functions.send-credentials]
 verify_jwt = true
+
+[functions.process-scheduled-tests]
+verify_jwt = false
