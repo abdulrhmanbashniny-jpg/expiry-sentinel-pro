@@ -125,23 +125,32 @@ const ItemDetails: React.FC = () => {
         </div>
       </div>
 
-      {/* Workflow Actions */}
-      <Card className="border-primary/20 bg-primary/5">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-lg">إجراءات سير العمل</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <WorkflowActions 
-            itemId={item.id} 
-            currentStatus={workflowStatus}
-          />
-          {workflowStatus === 'finished' && (
-            <p className="text-sm text-success mt-2">
-              ✓ تم إنهاء المعاملة بنجاح
-            </p>
-          )}
-        </CardContent>
-      </Card>
+      {/* Workflow Actions - Only show if user can edit or has workflow actions */}
+      {canEdit ? (
+        <Card className="border-primary/20 bg-primary/5">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg">إجراءات سير العمل</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <WorkflowActions 
+              itemId={item.id} 
+              currentStatus={workflowStatus}
+            />
+            {workflowStatus === 'finished' && (
+              <p className="text-sm text-success mt-2">
+                ✓ تم إنهاء المعاملة بنجاح
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      ) : (
+        <Alert className="border-muted bg-muted/50">
+          <Eye className="h-4 w-4" />
+          <AlertDescription>
+            أنت مستلم لهذه المعاملة. يمكنك المشاهدة فقط دون إمكانية التعديل.
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* Tabs for Details and Timeline */}
       <Tabs defaultValue="details" className="w-full">
@@ -231,6 +240,51 @@ const ItemDetails: React.FC = () => {
                 )}
               </CardContent>
             </Card>
+
+            {/* Completion Proof Card - Show when item is done or finished */}
+            {(workflowStatus === 'done_pending_supervisor' || workflowStatus === 'finished') && (
+              <Card className="border-success/30 bg-success/5">
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <FileText className="h-5 w-5 text-success" />
+                    إثبات الإنهاء
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {(item as any).completion_description ? (
+                    <div className="space-y-2">
+                      <p className="text-muted-foreground text-sm">وصف ما تم:</p>
+                      <p className="p-3 bg-background rounded-lg text-sm border">
+                        {(item as any).completion_description}
+                      </p>
+                    </div>
+                  ) : (
+                    <p className="text-muted-foreground text-sm italic">لا يوجد وصف</p>
+                  )}
+                  
+                  {(item as any).completion_attachment_url && (
+                    <div className="space-y-2">
+                      <p className="text-muted-foreground text-sm">مرفق الإثبات:</p>
+                      <a 
+                        href={(item as any).completion_attachment_url} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 text-primary hover:underline text-sm"
+                      >
+                        <FileText className="h-4 w-4" />
+                        عرض المرفق
+                      </a>
+                    </div>
+                  )}
+
+                  {(item as any).completion_date && (
+                    <div className="text-xs text-muted-foreground">
+                      تاريخ الإنهاء: {format(new Date((item as any).completion_date), 'dd/MM/yyyy HH:mm')}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
           </div>
         </TabsContent>
 

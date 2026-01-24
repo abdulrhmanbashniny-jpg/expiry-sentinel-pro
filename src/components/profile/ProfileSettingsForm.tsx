@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQueryClient, useMutation, useQuery } from '@tanstack/react-query';
-import { Loader2, Save, Eye, EyeOff, Check, AlertCircle } from 'lucide-react';
+import { Loader2, Save, Eye, EyeOff, Check, AlertCircle, Phone, MessageSquare, Mail, KeyRound } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -20,19 +20,79 @@ interface ProfileData {
   email: string;
 }
 
+// Phone validation for Saudi format
+const validateSaudiPhone = (phone: string): { valid: boolean; message: string } => {
+  if (!phone) return { valid: true, message: '' };
+  
+  const cleaned = phone.replace(/[\s\-\+]/g, '');
+  
+  // Accept formats: 966XXXXXXXXX, 05XXXXXXXX, 5XXXXXXXX
+  if (/^966\d{9}$/.test(cleaned)) return { valid: true, message: '' };
+  if (/^05\d{8}$/.test(cleaned)) return { valid: true, message: '' };
+  if (/^5\d{8}$/.test(cleaned)) return { valid: true, message: '' };
+  
+  return { valid: false, message: 'صيغة غير صحيحة. استخدم: 966XXXXXXXXX أو 05XXXXXXXX' };
+};
+
+// Telegram ID validation
+const validateTelegramId = (id: string): { valid: boolean; message: string } => {
+  if (!id) return { valid: true, message: '' }; // Optional field
+  
+  const cleaned = id.trim();
+  if (!/^\d+$/.test(cleaned)) {
+    return { valid: false, message: 'معرف تيليجرام يجب أن يكون رقمياً فقط' };
+  }
+  
+  if (cleaned.length < 5 || cleaned.length > 15) {
+    return { valid: false, message: 'معرف تيليجرام يجب أن يكون بين 5-15 رقم' };
+  }
+  
+  return { valid: true, message: '' };
+};
+
+// Email validation
+const validateEmail = (email: string): { valid: boolean; message: string } => {
+  if (!email) return { valid: false, message: 'البريد الإلكتروني مطلوب' };
+  
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return { valid: false, message: 'صيغة البريد الإلكتروني غير صحيحة' };
+  }
+  
+  return { valid: true, message: '' };
+};
+
+// Password validation
+const validatePassword = (password: string): { valid: boolean; message: string } => {
+  if (!password) return { valid: false, message: 'كلمة المرور مطلوبة' };
+  
+  if (password.length < 8) {
+    return { valid: false, message: 'كلمة المرور يجب أن تكون 8 أحرف على الأقل' };
+  }
+  
+  // Check for at least one number and one letter
+  if (!/\d/.test(password) || !/[a-zA-Z]/.test(password)) {
+    return { valid: false, message: 'كلمة المرور يجب أن تحتوي على أحرف وأرقام' };
+  }
+  
+  return { valid: true, message: '' };
+};
+
 export default function ProfileSettingsForm() {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   // Password state
-  const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPasswords, setShowPasswords] = useState(false);
   const [passwordError, setPasswordError] = useState('');
   const [passwordSuccess, setPasswordSuccess] = useState(false);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
+
+  // Profile validation errors
+  const [phoneError, setPhoneError] = useState('');
+  const [telegramError, setTelegramError] = useState('');
 
   // Profile state
   const [profileError, setProfileError] = useState('');
@@ -69,7 +129,7 @@ export default function ProfileSettingsForm() {
   });
 
   // Update form when profile loads
-  React.useEffect(() => {
+  useEffect(() => {
     if (profile) {
       setFormData({
         phone: profile.phone || '',
@@ -81,26 +141,52 @@ export default function ProfileSettingsForm() {
     }
   }, [profile]);
 
+  // Real-time validation for phone
+  const handlePhoneChange = (value: string) => {
+    setFormData({ ...formData, phone: value });
+    const validation = validateSaudiPhone(value);
+    setPhoneError(validation.valid ? '' : validation.message);
+  };
+
+  // Real-time validation for telegram
+  const handleTelegramChange = (value: string) => {
+    setFormData({ ...formData, telegram_user_id: value });
+    const validation = validateTelegramId(value);
+    setTelegramError(validation.valid ? '' : validation.message);
+  };
+
   // Update profile mutation
   const updateProfile = useMutation({
     mutationFn: async (data: Partial<ProfileData>) => {
       if (!user?.id) throw new Error('غير مسجل الدخول');
       
       // Validate phone format
-      if (data.phone && !/^(\+?966)?[0-9]{9,10}$/.test(data.phone.replace(/\s/g, ''))) {
-        throw new Error('صيغة رقم الجوال غير صحيحة');
+      const phoneValidation = validateSaudiPhone(data.phone || '');
+      if (!phoneValidation.valid) {
+        throw new Error(phoneValidation.message);
       }
 
-      // Validate telegram ID (should be numeric)
-      if (data.telegram_user_id && !/^\d+$/.test(data.telegram_user_id)) {
-        throw new Error('معرف تيليجرام يجب أن يكون رقمياً');
+      // Validate telegram ID
+      const telegramValidation = validateTelegramId(data.telegram_user_id || '');
+      if (!telegramValidation.valid) {
+        throw new Error(telegramValidation.message);
+      }
+
+      // Normalize phone to 966 format if provided
+      let normalizedPhone = data.phone?.replace(/[\s\-\+]/g, '') || null;
+      if (normalizedPhone) {
+        if (normalizedPhone.startsWith('05')) {
+          normalizedPhone = '966' + normalizedPhone.substring(1);
+        } else if (normalizedPhone.startsWith('5')) {
+          normalizedPhone = '966' + normalizedPhone;
+        }
       }
 
       const { error } = await supabase
         .from('profiles')
         .update({
-          phone: data.phone,
-          telegram_user_id: data.telegram_user_id || null,
+          phone: normalizedPhone,
+          telegram_user_id: data.telegram_user_id?.trim() || null,
           allow_whatsapp: data.allow_whatsapp,
           allow_telegram: data.allow_telegram,
         })
@@ -127,13 +213,16 @@ export default function ProfileSettingsForm() {
     setPasswordError('');
     setPasswordSuccess(false);
 
-    if (newPassword.length < 8) {
-      setPasswordError('كلمة المرور يجب أن تكون 8 أحرف على الأقل');
+    // Validate password strength
+    const passwordValidation = validatePassword(newPassword);
+    if (!passwordValidation.valid) {
+      setPasswordError(passwordValidation.message);
       return;
     }
 
+    // Validate confirmation match
     if (newPassword !== confirmPassword) {
-      setPasswordError('كلمة المرور الجديدة غير متطابقة');
+      setPasswordError('كلمة المرور الجديدة غير متطابقة مع التأكيد');
       return;
     }
 
@@ -144,7 +233,16 @@ export default function ProfileSettingsForm() {
         password: newPassword,
       });
 
-      if (error) throw error;
+      if (error) {
+        // Translate common Supabase errors
+        if (error.message.includes('session')) {
+          throw new Error('انتهت الجلسة. يرجى تسجيل الخروج وإعادة تسجيل الدخول');
+        }
+        if (error.message.includes('weak')) {
+          throw new Error('كلمة المرور ضعيفة جداً');
+        }
+        throw error;
+      }
 
       // Log password change
       await supabase.from('password_audit_log').insert({
@@ -154,12 +252,14 @@ export default function ProfileSettingsForm() {
       });
 
       setPasswordSuccess(true);
-      setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
-      toast({ title: 'تم تغيير كلمة المرور بنجاح' });
+      toast({ 
+        title: 'تم تغيير كلمة المرور بنجاح',
+        description: 'يمكنك الآن تسجيل الدخول بكلمة المرور الجديدة'
+      });
     } catch (error: any) {
-      setPasswordError(error.message || 'فشل تغيير كلمة المرور');
+      setPasswordError(error.message || 'فشل تغيير كلمة المرور. تأكد من جلستك وحاول مرة أخرى');
     } finally {
       setIsChangingPassword(false);
     }
@@ -170,8 +270,15 @@ export default function ProfileSettingsForm() {
     setEmailError('');
     setEmailSuccess(false);
 
-    if (!newEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail)) {
-      setEmailError('صيغة البريد الإلكتروني غير صحيحة');
+    const emailValidation = validateEmail(newEmail);
+    if (!emailValidation.valid) {
+      setEmailError(emailValidation.message);
+      return;
+    }
+
+    // Check if email is same as current
+    if (newEmail === user?.email) {
+      setEmailError('البريد الإلكتروني الجديد مطابق للحالي');
       return;
     }
 
@@ -182,18 +289,18 @@ export default function ProfileSettingsForm() {
         email: newEmail,
       });
 
-      if (error) throw error;
+      if (error) {
+        if (error.message.includes('already registered')) {
+          throw new Error('هذا البريد الإلكتروني مستخدم بالفعل');
+        }
+        throw error;
+      }
 
-      // Update email in profiles table too
-      await supabase
-        .from('profiles')
-        .update({ email: newEmail })
-        .eq('user_id', user?.id);
-
+      // Note: Don't update profiles table email here - it should be updated after confirmation
       setEmailSuccess(true);
       toast({
         title: 'تم إرسال رابط التأكيد',
-        description: 'يرجى التحقق من بريدك الإلكتروني الجديد لتأكيد التغيير',
+        description: 'يرجى التحقق من بريدك الإلكتروني الجديد والقديم لتأكيد التغيير',
       });
     } catch (error: any) {
       setEmailError(error.message || 'فشل تغيير البريد الإلكتروني');
@@ -201,6 +308,10 @@ export default function ProfileSettingsForm() {
       setIsChangingEmail(false);
     }
   };
+
+  // Check if form can be submitted
+  const canSubmitProfile = !phoneError && !telegramError && !updateProfile.isPending;
+  const canSubmitPassword = newPassword.length >= 8 && newPassword === confirmPassword && !isChangingPassword;
 
   if (isLoading) {
     return (
@@ -215,7 +326,10 @@ export default function ProfileSettingsForm() {
       {/* Profile Info Card */}
       <Card>
         <CardHeader>
-          <CardTitle>معلومات التواصل</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            <Phone className="h-5 w-5" />
+            معلومات التواصل
+          </CardTitle>
           <CardDescription>تعديل رقم الجوال ومعرف تيليجرام</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -239,14 +353,19 @@ export default function ProfileSettingsForm() {
               <Input
                 id="phone"
                 type="tel"
-                placeholder="+966XXXXXXXXX"
+                placeholder="966XXXXXXXXX"
                 value={formData.phone}
-                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                onChange={(e) => handlePhoneChange(e.target.value)}
                 dir="ltr"
+                className={phoneError ? 'border-destructive' : ''}
               />
-              <p className="text-xs text-muted-foreground">
-                صيغة سعودية: 966XXXXXXXXX
-              </p>
+              {phoneError ? (
+                <p className="text-xs text-destructive">{phoneError}</p>
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  صيغة سعودية: 966XXXXXXXXX أو 05XXXXXXXX
+                </p>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -256,19 +375,27 @@ export default function ProfileSettingsForm() {
                 type="text"
                 placeholder="123456789"
                 value={formData.telegram_user_id}
-                onChange={(e) => setFormData({ ...formData, telegram_user_id: e.target.value })}
+                onChange={(e) => handleTelegramChange(e.target.value)}
                 dir="ltr"
+                className={telegramError ? 'border-destructive' : ''}
               />
-              <p className="text-xs text-muted-foreground">
-                رقم معرف الدردشة من تيليجرام
-              </p>
+              {telegramError ? (
+                <p className="text-xs text-destructive">{telegramError}</p>
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  رقم معرف الدردشة من تيليجرام (اتركه فارغاً لتعطيل الإشعارات)
+                </p>
+              )}
             </div>
           </div>
 
           <Separator />
 
           <div className="space-y-4">
-            <h4 className="font-medium">قنوات الإشعارات</h4>
+            <h4 className="font-medium flex items-center gap-2">
+              <MessageSquare className="h-4 w-4" />
+              قنوات الإشعارات
+            </h4>
             
             <div className="flex items-center justify-between p-3 rounded-lg border">
               <div className="flex items-center gap-3">
@@ -278,7 +405,9 @@ export default function ProfileSettingsForm() {
                 <div>
                   <p className="font-medium">واتساب</p>
                   <p className="text-sm text-muted-foreground">
-                    استقبال التنبيهات عبر واتساب
+                    {formData.allow_whatsapp 
+                      ? 'سيتم إرسال التنبيهات عبر واتساب' 
+                      : 'لن يتم إرسال أي رسائل واتساب'}
                   </p>
                 </div>
               </div>
@@ -298,7 +427,11 @@ export default function ProfileSettingsForm() {
                 <div>
                   <p className="font-medium">تيليجرام</p>
                   <p className="text-sm text-muted-foreground">
-                    استقبال التنبيهات عبر تيليجرام
+                    {formData.allow_telegram 
+                      ? (formData.telegram_user_id 
+                          ? 'سيتم إرسال التنبيهات عبر تيليجرام' 
+                          : 'يجب إدخال معرف تيليجرام أولاً')
+                      : 'لن يتم إرسال أي رسائل تيليجرام'}
                   </p>
                 </div>
               </div>
@@ -309,11 +442,20 @@ export default function ProfileSettingsForm() {
                 }
               />
             </div>
+
+            {formData.allow_telegram && !formData.telegram_user_id && (
+              <Alert variant="default" className="bg-amber-50 border-amber-200">
+                <AlertCircle className="h-4 w-4 text-amber-600" />
+                <AlertDescription className="text-amber-700">
+                  تفعيل تيليجرام يتطلب إدخال معرف تيليجرام (Chat ID) أعلاه
+                </AlertDescription>
+              </Alert>
+            )}
           </div>
 
           <Button
             onClick={() => updateProfile.mutate(formData)}
-            disabled={updateProfile.isPending}
+            disabled={!canSubmitProfile}
             className="w-full sm:w-auto"
           >
             {updateProfile.isPending ? (
@@ -329,7 +471,10 @@ export default function ProfileSettingsForm() {
       {/* Password Change Card */}
       <Card>
         <CardHeader>
-          <CardTitle>تغيير كلمة المرور</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            <KeyRound className="h-5 w-5" />
+            تغيير كلمة المرور
+          </CardTitle>
           <CardDescription>تحديث كلمة المرور الخاصة بحسابك</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -343,7 +488,9 @@ export default function ProfileSettingsForm() {
           {passwordSuccess && (
             <Alert className="border-green-500 bg-green-50 text-green-700">
               <Check className="h-4 w-4" />
-              <AlertDescription>تم تغيير كلمة المرور بنجاح</AlertDescription>
+              <AlertDescription>
+                تم تغيير كلمة المرور بنجاح. يمكنك الآن تسجيل الخروج وإعادة الدخول بكلمة المرور الجديدة.
+              </AlertDescription>
             </Alert>
           )}
 
@@ -355,7 +502,10 @@ export default function ProfileSettingsForm() {
                   id="new-password"
                   type={showPasswords ? 'text' : 'password'}
                   value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
+                  onChange={(e) => {
+                    setNewPassword(e.target.value);
+                    setPasswordError('');
+                  }}
                   placeholder="أدخل كلمة المرور الجديدة"
                   dir="ltr"
                 />
@@ -374,7 +524,7 @@ export default function ProfileSettingsForm() {
                 </Button>
               </div>
               <p className="text-xs text-muted-foreground">
-                يجب أن تكون 8 أحرف على الأقل
+                يجب أن تكون 8 أحرف على الأقل وتحتوي على أحرف وأرقام
               </p>
             </div>
 
@@ -384,13 +534,23 @@ export default function ProfileSettingsForm() {
                 id="confirm-password"
                 type={showPasswords ? 'text' : 'password'}
                 value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
+                onChange={(e) => {
+                  setConfirmPassword(e.target.value);
+                  setPasswordError('');
+                }}
                 placeholder="أعد إدخال كلمة المرور الجديدة"
                 dir="ltr"
               />
               {confirmPassword && newPassword !== confirmPassword && (
-                <p className="text-xs text-destructive">
+                <p className="text-xs text-destructive flex items-center gap-1">
+                  <AlertCircle className="h-3 w-3" />
                   كلمة المرور غير متطابقة
+                </p>
+              )}
+              {confirmPassword && newPassword === confirmPassword && newPassword.length >= 8 && (
+                <p className="text-xs text-green-600 flex items-center gap-1">
+                  <Check className="h-3 w-3" />
+                  كلمة المرور متطابقة
                 </p>
               )}
             </div>
@@ -398,12 +558,14 @@ export default function ProfileSettingsForm() {
 
           <Button
             onClick={handlePasswordChange}
-            disabled={isChangingPassword || !newPassword || !confirmPassword}
+            disabled={!canSubmitPassword}
             variant="secondary"
           >
             {isChangingPassword ? (
               <Loader2 className="h-4 w-4 animate-spin ml-2" />
-            ) : null}
+            ) : (
+              <KeyRound className="h-4 w-4 ml-2" />
+            )}
             تغيير كلمة المرور
           </Button>
         </CardContent>
@@ -412,7 +574,10 @@ export default function ProfileSettingsForm() {
       {/* Email Change Card */}
       <Card>
         <CardHeader>
-          <CardTitle>تغيير البريد الإلكتروني</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            <Mail className="h-5 w-5" />
+            تغيير البريد الإلكتروني
+          </CardTitle>
           <CardDescription>
             تحديث البريد الإلكتروني المستخدم لتسجيل الدخول
           </CardDescription>
@@ -429,7 +594,8 @@ export default function ProfileSettingsForm() {
             <Alert className="border-green-500 bg-green-50 text-green-700">
               <Check className="h-4 w-4" />
               <AlertDescription>
-                تم إرسال رابط التأكيد إلى بريدك الإلكتروني الجديد
+                تم إرسال رابط التأكيد إلى بريدك الإلكتروني الجديد والقديم.
+                يجب تأكيد التغيير من كلا البريدين.
               </AlertDescription>
             </Alert>
           )}
@@ -450,7 +616,10 @@ export default function ProfileSettingsForm() {
               id="new-email"
               type="email"
               value={newEmail}
-              onChange={(e) => setNewEmail(e.target.value)}
+              onChange={(e) => {
+                setNewEmail(e.target.value);
+                setEmailError('');
+              }}
               placeholder="example@domain.com"
               dir="ltr"
             />
@@ -458,12 +627,14 @@ export default function ProfileSettingsForm() {
 
           <Button
             onClick={handleEmailChange}
-            disabled={isChangingEmail || !newEmail}
+            disabled={isChangingEmail || !newEmail || newEmail === user?.email}
             variant="secondary"
           >
             {isChangingEmail ? (
               <Loader2 className="h-4 w-4 animate-spin ml-2" />
-            ) : null}
+            ) : (
+              <Mail className="h-4 w-4 ml-2" />
+            )}
             تغيير البريد الإلكتروني
           </Button>
         </CardContent>
