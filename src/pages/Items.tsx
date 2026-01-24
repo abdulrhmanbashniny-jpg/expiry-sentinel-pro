@@ -1,15 +1,17 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Search, FileText, Trash2, Edit, Archive, Bell } from 'lucide-react';
+import { Plus, Search, FileText, Trash2, Edit, Archive, Bell, Eye } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useItems } from '@/hooks/useItems';
 import { useCategories } from '@/hooks/useCategories';
 import { useDepartments } from '@/hooks/useDepartments';
+import { useItemsPermissions } from '@/hooks/useItemPermissions';
 import { format } from 'date-fns';
 import { ItemStatus } from '@/types/database';
 import { WorkflowStatus, WORKFLOW_STATUS_LABELS } from '@/hooks/useDashboardData';
@@ -22,6 +24,7 @@ const Items: React.FC = () => {
   const { items, isLoading, updateItem, deleteItem } = useItems();
   const { categories } = useCategories();
   const { departments } = useDepartments();
+  const { checkPermissions } = useItemsPermissions();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [departmentFilter, setDepartmentFilter] = useState<string>('all');
@@ -210,7 +213,9 @@ const Items: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredItems.map((item) => (
+                {filteredItems.map((item) => {
+                    const permissions = checkPermissions((item as any).created_by_user_id);
+                    return (
                     <tr key={item.id} className="cursor-pointer" onClick={() => navigate(`/items/${item.id}`)}>
                       <td className="font-mono text-sm text-primary">{item.ref_number || '-'}</td>
                       <td className="font-medium">{item.title}</td>
@@ -229,28 +234,48 @@ const Items: React.FC = () => {
                             itemId={item.id} 
                             itemTitle={item.title}
                           />
-                          <Button size="icon" variant="ghost" onClick={() => navigate(`/items/${item.id}/edit`)}>
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            onClick={() => updateItem.mutate({ id: item.id, status: 'archived' })}
-                          >
-                            <Archive className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            className="text-destructive hover:text-destructive"
-                            onClick={() => deleteItem.mutate(item.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          {permissions.canEdit ? (
+                            <Button size="icon" variant="ghost" onClick={() => navigate(`/items/${item.id}/edit`)}>
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                          ) : (
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button size="icon" variant="ghost" disabled>
+                                    <Eye className="h-4 w-4 text-muted-foreground" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>عرض فقط - لا يمكنك التعديل</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          )}
+                          {permissions.canEdit && (
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              onClick={() => updateItem.mutate({ id: item.id, status: 'archived' })}
+                            >
+                              <Archive className="h-4 w-4" />
+                            </Button>
+                          )}
+                          {permissions.canDelete && (
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="text-destructive hover:text-destructive"
+                              onClick={() => deleteItem.mutate(item.id)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
                         </div>
                       </td>
                     </tr>
-                  ))}
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

@@ -1,11 +1,12 @@
 import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowRight, Edit, Calendar, User, Building, FileText, Clock, Repeat } from 'lucide-react';
+import { ArrowRight, Edit, Calendar, User, Building, FileText, Clock, Repeat, Eye } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useItems } from '@/hooks/useItems';
+import { useItemPermissions } from '@/hooks/useItemPermissions';
 import { format } from 'date-fns';
 import { ItemStatus } from '@/types/database';
 import { WorkflowStatus, WORKFLOW_STATUS_LABELS } from '@/hooks/useDashboardData';
@@ -13,6 +14,7 @@ import TestWhatsAppDialog from '@/components/TestWhatsAppDialog';
 import SendTelegramDialog from '@/components/SendTelegramDialog';
 import WorkflowActions from '@/components/workflow/WorkflowActions';
 import ItemTimeline from '@/components/workflow/ItemTimeline';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 const ItemDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -20,6 +22,10 @@ const ItemDetails: React.FC = () => {
   const { items, isLoading } = useItems();
 
   const item = items.find(i => i.id === id);
+  const itemCreatorId = (item as any)?.created_by_user_id;
+  
+  // Check permissions for this item
+  const { canEdit, canDelete, isRecipient, isLoading: permissionsLoading } = useItemPermissions(id, itemCreatorId);
 
   const getStatusBadge = (status: ItemStatus, expiryDate: string) => {
     const daysLeft = Math.ceil((new Date(expiryDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
@@ -100,12 +106,22 @@ const ItemDetails: React.FC = () => {
           </div>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
+          {/* Show recipient-only badge */}
+          {isRecipient && !canEdit && (
+            <Badge variant="outline" className="gap-1 bg-muted">
+              <Eye className="h-3 w-3" />
+              مستلم (عرض فقط)
+            </Badge>
+          )}
           <TestWhatsAppDialog itemId={item.id} itemTitle={item.title} />
           <SendTelegramDialog itemId={item.id} itemTitle={item.title} />
-          <Button onClick={() => navigate(`/items/${item.id}/edit`)}>
-            <Edit className="ml-2 h-4 w-4" />
-            تعديل
-          </Button>
+          {/* Only show edit button if user has permission */}
+          {canEdit && (
+            <Button onClick={() => navigate(`/items/${item.id}/edit`)}>
+              <Edit className="ml-2 h-4 w-4" />
+              تعديل
+            </Button>
+          )}
         </div>
       </div>
 
