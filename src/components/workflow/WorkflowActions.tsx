@@ -27,6 +27,7 @@ import {
   WorkflowStatus 
 } from '@/hooks/useWorkflowActions';
 import { useAuth } from '@/contexts/AuthContext';
+import CompletionProofDialog from './CompletionProofDialog';
 
 interface WorkflowActionsProps {
   itemId: string;
@@ -54,6 +55,7 @@ const WorkflowActions: React.FC<WorkflowActionsProps> = ({
   const workflowAction = useWorkflowAction();
   
   const [reasonDialogOpen, setReasonDialogOpen] = useState(false);
+  const [completionDialogOpen, setCompletionDialogOpen] = useState(false);
   const [pendingAction, setPendingAction] = useState<string | null>(null);
   const [reason, setReason] = useState('');
   const [reasonError, setReasonError] = useState('');
@@ -61,6 +63,12 @@ const WorkflowActions: React.FC<WorkflowActionsProps> = ({
   const availableActions = getAvailableActions(currentStatus, role);
 
   const handleAction = async (action: string, requiresReason: boolean) => {
+    // For 'done' action, show completion proof dialog
+    if (action === 'done') {
+      setCompletionDialogOpen(true);
+      return;
+    }
+
     if (requiresReason) {
       setPendingAction(action);
       setReason('');
@@ -76,6 +84,18 @@ const WorkflowActions: React.FC<WorkflowActionsProps> = ({
     }
 
     await workflowAction.mutateAsync({ itemId, action });
+    onActionComplete?.();
+  };
+
+  // Handle completion with proof
+  const handleCompletionConfirm = async (description?: string, attachmentUrl?: string) => {
+    await workflowAction.mutateAsync({ 
+      itemId, 
+      action: 'done',
+      completionDescription: description,
+      completionAttachmentUrl: attachmentUrl,
+    });
+    setCompletionDialogOpen(false);
     onActionComplete?.();
   };
 
@@ -198,6 +218,15 @@ const WorkflowActions: React.FC<WorkflowActionsProps> = ({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Completion Proof Dialog */}
+      <CompletionProofDialog
+        open={completionDialogOpen}
+        onOpenChange={setCompletionDialogOpen}
+        itemId={itemId}
+        onConfirm={handleCompletionConfirm}
+        isSubmitting={workflowAction.isPending}
+      />
     </>
   );
 };
