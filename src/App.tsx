@@ -38,6 +38,7 @@ import DynamicFields from "./pages/DynamicFields";
 import AutomationDashboard from "./pages/AutomationDashboard";
 import PermissionManagement from "./pages/PermissionManagement";
 import ImportTemplates from "./pages/ImportTemplates";
+import TenantManagement from "./pages/TenantManagement";
 import NotFound from "./pages/NotFound";
 import { Loader2 } from "lucide-react";
 
@@ -106,6 +107,7 @@ const AppRoutes = () => {
         <Route path="automation-dashboard" element={<AutomationDashboard />} />
         <Route path="permission-management" element={<PermissionManagement />} />
         <Route path="import-templates" element={<ImportTemplates />} />
+        <Route path="tenant-management" element={<TenantManagement />} />
       </Route>
       <Route path="*" element={<NotFound />} />
     </Routes>

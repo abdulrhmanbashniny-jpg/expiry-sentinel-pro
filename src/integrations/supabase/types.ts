@@ -1549,6 +1549,7 @@ export type Database = {
           national_id: string | null
           phone: string | null
           telegram_user_id: string | null
+          tenant_id: string | null
           updated_at: string
           user_id: string
         }
@@ -1568,6 +1569,7 @@ export type Database = {
           national_id?: string | null
           phone?: string | null
           telegram_user_id?: string | null
+          tenant_id?: string | null
           updated_at?: string
           user_id: string
         }
@@ -1587,10 +1589,19 @@ export type Database = {
           national_id?: string | null
           phone?: string | null
           telegram_user_id?: string | null
+          tenant_id?: string | null
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       published_results: {
         Row: {
@@ -1807,6 +1818,148 @@ export type Database = {
         }
         Relationships: []
       }
+      tenant_integrations: {
+        Row: {
+          config: Json | null
+          created_at: string
+          id: string
+          integration_key: string
+          is_active: boolean | null
+          last_tested_at: string | null
+          tenant_id: string
+          test_result: Json | null
+          updated_at: string
+        }
+        Insert: {
+          config?: Json | null
+          created_at?: string
+          id?: string
+          integration_key: string
+          is_active?: boolean | null
+          last_tested_at?: string | null
+          tenant_id: string
+          test_result?: Json | null
+          updated_at?: string
+        }
+        Update: {
+          config?: Json | null
+          created_at?: string
+          id?: string
+          integration_key?: string
+          is_active?: boolean | null
+          last_tested_at?: string | null
+          tenant_id?: string
+          test_result?: Json | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_integrations_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tenant_usage_stats: {
+        Row: {
+          ai_calls: number | null
+          created_at: string
+          id: string
+          items_count: number | null
+          notifications_sent: number | null
+          period_end: string
+          period_start: string
+          storage_used_mb: number | null
+          tenant_id: string
+          users_count: number | null
+        }
+        Insert: {
+          ai_calls?: number | null
+          created_at?: string
+          id?: string
+          items_count?: number | null
+          notifications_sent?: number | null
+          period_end: string
+          period_start: string
+          storage_used_mb?: number | null
+          tenant_id: string
+          users_count?: number | null
+        }
+        Update: {
+          ai_calls?: number | null
+          created_at?: string
+          id?: string
+          items_count?: number | null
+          notifications_sent?: number | null
+          period_end?: string
+          period_start?: string
+          storage_used_mb?: number | null
+          tenant_id?: string
+          users_count?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_usage_stats_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tenants: {
+        Row: {
+          code: string
+          created_at: string
+          domain: string | null
+          id: string
+          is_active: boolean | null
+          logo_url: string | null
+          max_items: number | null
+          max_users: number | null
+          name: string
+          name_en: string | null
+          settings: Json | null
+          subscription_plan: string | null
+          trial_ends_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          domain?: string | null
+          id?: string
+          is_active?: boolean | null
+          logo_url?: string | null
+          max_items?: number | null
+          max_users?: number | null
+          name: string
+          name_en?: string | null
+          settings?: Json | null
+          subscription_plan?: string | null
+          trial_ends_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          domain?: string | null
+          id?: string
+          is_active?: boolean | null
+          logo_url?: string | null
+          max_items?: number | null
+          max_users?: number | null
+          name?: string
+          name_en?: string | null
+          settings?: Json | null
+          subscription_plan?: string | null
+          trial_ends_at?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       user_department_scopes: {
         Row: {
           can_cross_view_only: boolean
@@ -1947,6 +2100,7 @@ export type Database = {
           skipped_count: number
         }[]
       }
+      get_current_tenant_id: { Args: never; Returns: string }
       get_team_member_ids: {
         Args: { _supervisor_id: string }
         Returns: string[]
@@ -1983,6 +2137,8 @@ export type Database = {
       }
       is_supervisor_or_higher: { Args: { _user_id: string }; Returns: boolean }
       is_system_admin: { Args: { _user_id: string }; Returns: boolean }
+      is_tenant_admin: { Args: { _tenant_id: string }; Returns: boolean }
+      is_user_in_tenant: { Args: { _tenant_id: string }; Returns: boolean }
       submit_evaluation_with_score: {
         Args: { p_evaluation_id: string }
         Returns: {
