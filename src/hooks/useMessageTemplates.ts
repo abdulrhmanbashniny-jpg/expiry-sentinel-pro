@@ -93,7 +93,13 @@ export function useMessageTemplates() {
         .order('name');
 
       if (error) throw error;
-      return data as MessageTemplate[];
+      // Transform database response to match MessageTemplate interface
+      return (data || []).map(item => ({
+        ...item,
+        placeholders: Array.isArray(item.placeholders) 
+          ? item.placeholders as unknown as MessageTemplate['placeholders']
+          : [],
+      })) as MessageTemplate[];
     },
   });
 

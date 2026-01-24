@@ -142,10 +142,14 @@ export const useWorkflowAction = () => {
       itemId,
       action,
       reason,
+      completionDescription,
+      completionAttachmentUrl,
     }: {
       itemId: string;
       action: string;
       reason?: string;
+      completionDescription?: string;
+      completionAttachmentUrl?: string;
     }) => {
       const transition = WORKFLOW_TRANSITIONS[action];
       if (!transition) {
@@ -180,16 +184,28 @@ export const useWorkflowAction = () => {
         throw new Error(guardCheck.message);
       }
 
-      // Check if reason is required
-      if (transition.requiresReason && !reason?.trim()) {
-        throw new Error('السبب مطلوب لهذا الإجراء');
+      // Prepare update data
+      const updateData: Record<string, any> = { workflow_status: transition.to };
+      
+      // Add completion proof if provided (for 'done' action)
+      if (action === 'done') {
+        if (completionDescription) {
+          updateData.completion_description = completionDescription;
+        }
+        if (completionAttachmentUrl) {
+          updateData.completion_attachment_url = completionAttachmentUrl;
+        }
+        updateData.completion_date = new Date().toISOString();
+        updateData.completed_by_user_id = userData.user.id;
       }
 
       // Update item workflow status
       const { error: updateError } = await supabase
         .from('items')
-        .update({ workflow_status: transition.to })
+        .update(updateData)
         .eq('id', itemId);
+
+      if (updateError) throw updateError;
 
       if (updateError) throw updateError;
 
