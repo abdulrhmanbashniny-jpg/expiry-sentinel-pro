@@ -2368,6 +2368,10 @@ export type Database = {
         Args: { item_uuid: string; user_uuid: string }
         Returns: boolean
       }
+      is_only_recipient_not_creator: {
+        Args: { item_id: string; user_id: string }
+        Returns: boolean
+      }
       is_supervisor_of: {
         Args: { _employee_id: string; _supervisor_id: string }
         Returns: boolean
