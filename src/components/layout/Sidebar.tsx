@@ -60,6 +60,7 @@ const navItems: NavItem[] = [
   { to: '/evaluations', icon: Target, label: 'تقييم الأداء', minRole: 'supervisor' },
   { to: '/evaluation-review', icon: FileCheck, label: 'مراجعة التقييمات', minRole: 'system_admin' },
   { to: '/my-results', icon: BarChart3, label: 'نتائجي' },
+  { to: '/tenant-management', icon: Building2, label: 'إدارة الشركات', minRole: 'system_admin' },
   { to: '/team-management', icon: UsersRound, label: 'إدارة الفريق', minRole: 'system_admin' },
   { to: '/user-management', icon: Users, label: 'إدارة المستخدمين', minRole: 'admin' },
   { to: '/user-import', icon: Upload, label: 'استيراد المستخدمين', minRole: 'system_admin' },
