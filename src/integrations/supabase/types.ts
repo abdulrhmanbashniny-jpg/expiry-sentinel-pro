@@ -1973,6 +1973,10 @@ export type Database = {
         Args: { _department_id: string; _user_id: string }
         Returns: boolean
       }
+      is_item_recipient: {
+        Args: { item_uuid: string; user_uuid: string }
+        Returns: boolean
+      }
       is_supervisor_of: {
         Args: { _employee_id: string; _supervisor_id: string }
         Returns: boolean
