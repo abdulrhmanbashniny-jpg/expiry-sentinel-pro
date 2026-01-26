@@ -8,6 +8,193 @@
 - **مستشار الامتثال الذكي**: تحليل وتقارير باستخدام الذكاء الاصطناعي
 - **تكاملات متعددة**: WhatsApp, Telegram مع جدولة داخلية بدون n8n
 - **AI-to-AI Layer**: واجهة برمجية للذكاء الاصطناعي الخارجي (API + MCP)
+- **🆕 Multi-Tenant**: منصة متعددة الشركات مع فصل كامل للبيانات
+
+---
+
+## 🏢 Multi-Tenant Architecture (منصة متعددة الشركات)
+
+### المفهوم
+النظام يدعم استضافة شركات متعددة على نفس المنصة مع **فصل تام للبيانات** بين كل شركة.
+
+### كيفية العمل
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    Platform (Lovable Cloud)                  │
+├─────────────────────────────────────────────────────────────┤
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐    │
+│  │ Tenant A │  │ Tenant B │  │ Tenant C │  │ Tenant D │    │
+│  │ (شركة أ) │  │ (شركة ب) │  │ (شركة ج) │  │ (شركة د) │    │
+│  ├──────────┤  ├──────────┤  ├──────────┤  ├──────────┤    │
+│  │ Users    │  │ Users    │  │ Users    │  │ Users    │    │
+│  │ Items    │  │ Items    │  │ Items    │  │ Items    │    │
+│  │ Depts    │  │ Depts    │  │ Depts    │  │ Depts    │    │
+│  │ Settings │  │ Settings │  │ Settings │  │ Settings │    │
+│  │ API Keys │  │ API Keys │  │ API Keys │  │ API Keys │    │
+│  └──────────┘  └──────────┘  └──────────┘  └──────────┘    │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### الجداول الأساسية المعزولة بـ tenant_id
+
+| الجدول | الوصف |
+|--------|-------|
+| `tenants` | بيانات الشركات (الاسم، الكود، الخطة، الحدود) |
+| `profiles` | ملفات المستخدمين مع ربط بـ tenant |
+| `items` | العناصر/المعاملات |
+| `departments` | الأقسام |
+| `categories` | الفئات |
+| `recipients` | المستلمين |
+| `reminder_rules` | قواعد التذكير |
+| `message_templates` | قوالب الرسائل |
+| `notification_log` | سجل الإشعارات |
+| `automation_runs` | سجل تشغيل الأتمتة |
+| `kpi_templates` | قوالب تقييم الأداء |
+| `evaluation_cycles` | دورات التقييم |
+| `evaluations` | التقييمات |
+| `tenant_integrations` | تكاملات كل شركة (API Keys) |
+
+### سياسات RLS (Row Level Security)
+
+#### 1. استرجاع Tenant الحالي
+```sql
+CREATE FUNCTION public.get_current_tenant_id()
+RETURNS uuid AS $$
+  SELECT tenant_id FROM public.profiles 
+  WHERE user_id = auth.uid()
+$$ LANGUAGE sql SECURITY DEFINER;
+```
+
+#### 2. سياسات الفصل لكل جدول
+```sql
+-- مثال: جدول items
+
+-- القراءة: فقط بيانات الشركة
+CREATE POLICY "Items: Tenant SELECT"
+ON public.items FOR SELECT
+USING (
+  is_system_admin(auth.uid()) OR 
+  (tenant_id = get_current_tenant_id())
+);
+
+-- الإضافة: مع تحقق من tenant_id
+CREATE POLICY "Items: Tenant INSERT"
+ON public.items FOR INSERT
+WITH CHECK (
+  is_system_admin(auth.uid()) OR 
+  ((tenant_id IS NULL) AND (get_current_tenant_id() IS NOT NULL)) OR 
+  (tenant_id = get_current_tenant_id())
+);
+
+-- التعديل: فقط بيانات الشركة
+CREATE POLICY "Items: Tenant UPDATE"
+ON public.items FOR UPDATE
+USING (is_system_admin(auth.uid()) OR (tenant_id = get_current_tenant_id()))
+WITH CHECK (is_system_admin(auth.uid()) OR (tenant_id = get_current_tenant_id()));
+
+-- الحذف: فقط بيانات الشركة
+CREATE POLICY "Items: Tenant DELETE"
+ON public.items FOR DELETE
+USING (is_system_admin(auth.uid()) OR (tenant_id = get_current_tenant_id()));
+```
+
+#### 3. Triggers للحماية الإضافية
+
+```sql
+-- منع تغيير tenant_id بعد الإنشاء
+CREATE FUNCTION public.prevent_tenant_id_change()
+RETURNS trigger AS $$
+BEGIN
+  IF OLD.tenant_id IS DISTINCT FROM NEW.tenant_id THEN
+    RAISE EXCEPTION 'Cannot change tenant_id after creation';
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- تعيين tenant_id تلقائياً عند الإضافة
+CREATE FUNCTION public.enforce_tenant_on_insert()
+RETURNS trigger AS $$
+BEGIN
+  -- رفض إذا حاول المستخدم إدخال tenant مختلف
+  IF NEW.tenant_id IS NOT NULL AND NEW.tenant_id != get_current_tenant_id() THEN
+    IF NOT is_system_admin(auth.uid()) THEN
+      RAISE EXCEPTION 'Cannot insert records for other tenants';
+    END IF;
+  END IF;
+  
+  -- تعيين تلقائي إن لم يُحدد
+  IF NEW.tenant_id IS NULL THEN
+    NEW.tenant_id := get_current_tenant_id();
+  END IF;
+  
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+```
+
+### إدارة الشركات
+
+#### إنشاء شركة جديدة
+1. الدخول كـ **System Admin**
+2. فتح صفحة **إدارة الشركات** (`/tenant-management`)
+3. إضافة شركة جديدة مع:
+   - الاسم (عربي/إنجليزي)
+   - الكود الفريد (مثل: `ACME`)
+   - خطة الاشتراك (Basic/Professional/Enterprise)
+   - الحدود (عدد المستخدمين، عدد العناصر)
+
+#### دعوة مستخدمين للشركة
+```sql
+-- جدول الدعوات
+CREATE TABLE public.user_invitations (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id uuid NOT NULL REFERENCES tenants(id),
+  email text NOT NULL,
+  role text NOT NULL DEFAULT 'employee',
+  token text NOT NULL UNIQUE,
+  invited_by uuid NOT NULL,
+  expires_at timestamptz NOT NULL DEFAULT (now() + interval '7 days'),
+  accepted_at timestamptz,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+```
+
+- Admin يُرسل دعوة لبريد إلكتروني
+- المستخدم يفتح رابط الدعوة ويُنشئ حسابه
+- يُربط تلقائياً بنفس `tenant_id` الخاص بالـ Admin
+
+### التكاملات لكل شركة
+
+```sql
+-- كل شركة لها API Keys خاصة
+CREATE TABLE public.tenant_integrations (
+  id uuid PRIMARY KEY,
+  tenant_id uuid NOT NULL REFERENCES tenants(id),
+  integration_key text NOT NULL, -- telegram, whatsapp, n8n, ai
+  config jsonb NOT NULL DEFAULT '{}',
+  is_active boolean DEFAULT true,
+  last_tested_at timestamptz,
+  test_result jsonb,
+  UNIQUE(tenant_id, integration_key)
+);
+```
+
+**مثال الإعدادات:**
+```json
+{
+  "telegram": {
+    "bot_token": "123456:ABC...",
+    "bot_username": "@company_bot"
+  },
+  "whatsapp": {
+    "api_base_url": "https://api.evolution.com",
+    "apikey": "xxx",
+    "instance_name": "company_instance"
+  }
+}
+```
 
 ---
 
@@ -37,15 +224,83 @@
 draft → submitted → approved → published
 ```
 
-### 3. مستشار الامتثال الذكي
+### 3. Workflow المعاملات مع إثبات الإنهاء
+
+```
+new → in_progress → done_pending_supervisor → finished
+                  ↓
+         [إثبات الإنهاء]
+         - وصف ماذا تم
+         - صورة/مرفق
+```
+
+**الحقول الجديدة:**
+- `completion_description`: وصف كيف تم إنهاء المهمة
+- `completion_attachment_url`: رابط المرفق (صورة/PDF)
+- `completion_date`: تاريخ الإنهاء
+- `completed_by_user_id`: من أنهى المهمة
+
+### 4. مستشار الامتثال الذكي
 - تحليل مستوى الالتزام بالذكاء الاصطناعي
 - توصيات مخصصة لتحسين الأداء
 - تقارير دورية شاملة
 
-### 4. إدارة المستخدمين والصلاحيات
+### 5. إدارة المستخدمين والصلاحيات
 - أدوار متعددة: `system_admin`, `admin`, `hr_user`, `supervisor`, `employee`
 - إدارة الأقسام والفرق
 - نظام التفويضات
+- **صلاحيات المستلمين**: المستلم يرى المعاملة فقط ولا يستطيع التعديل
+
+---
+
+## 🔐 الأدوار والصلاحيات
+
+| الدور | الوصف | الصلاحيات |
+|-------|-------|-----------|
+| `system_admin` | مدير النظام | كل شيء + إدارة الشركات |
+| `admin` | مدير الشركة | إدارة البيانات والمستخدمين داخل الشركة |
+| `supervisor` | مشرف | إدارة فريقه فقط |
+| `hr_user` | مستخدم HR | إدارة العناصر والتذكيرات |
+| `employee` | موظف | عرض بياناته فقط |
+
+### صلاحيات المستلمين (Recipients)
+- **UI**: المستلم يرى المعاملة بدون أزرار التعديل/الحذف
+- **RLS**: أي محاولة تعديل من المستلم تُرفض
+
+```sql
+CREATE FUNCTION public.is_only_recipient_not_creator(item_id uuid, user_id uuid)
+RETURNS boolean AS $$
+  -- يُرجع true إذا كان المستخدم مستلم وليس منشئ
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- سياسة UPDATE تمنع المستلم من التعديل
+CREATE POLICY "Items: Admin plus can update"
+ON public.items FOR UPDATE
+USING (
+  (NOT is_only_recipient_not_creator(id, auth.uid())) AND
+  (is_admin_or_higher(auth.uid()) OR created_by_user_id = auth.uid())
+);
+```
+
+---
+
+## ⚙️ إعدادات الحساب (Self-Service)
+
+كل مستخدم يستطيع من صفحة **الملف الشخصي** (`/profile`):
+
+| الإعداد | الوصف |
+|---------|-------|
+| تغيير كلمة المرور | مع التحقق من القوة والتأكيد |
+| تعديل رقم الجوال | بصيغة 966XXXXXXXXX |
+| تعديل Telegram ID | معرف التيليجرام الرقمي |
+| تفعيل/إيقاف WhatsApp | `allow_whatsapp` |
+| تفعيل/إيقاف Telegram | `allow_telegram` |
+| تعديل البريد الإلكتروني | مع تأكيد التغيير |
+
+### أمان الإعدادات
+- RLS يمنع أي مستخدم من تعديل بيانات غيره
+- لا يمكن تغيير `tenant_id` أو الأدوار من الإعدادات
+- التغييرات تنعكس فوراً على سلوك الإشعارات
 
 ---
 
@@ -57,21 +312,12 @@ draft → submitted → approved → published
 |--------|---------|---------|
 | `daily-reminders-07am-riyadh` | 07:00 AM Asia/Riyadh | `automated-reminders` |
 
-**لإيقاف الجدولة:**
-```sql
-SELECT cron.unschedule('daily-reminders-07am-riyadh');
-```
-
-**لتعديل الجدولة:**
-```sql
-SELECT cron.schedule('daily-reminders-07am-riyadh', '0 4 * * *', $$ ... $$);
-```
-
 ### Pipeline التشغيل
 ```
 1. جلب العناصر المستحقة (get due items)
 2. لكل عنصر → لكل مستلم:
    - التحقق من Rate Limit
+   - التحقق من allow_whatsapp/allow_telegram
    - توليد الرسالة بالقالب الرسمي (prepare-message)
    - الإرسال عبر القناة المناسبة (send-telegram/send-whatsapp)
    - تسجيل النتيجة (notification_log)
@@ -101,25 +347,6 @@ SELECT cron.schedule('daily-reminders-07am-riyadh', '0 4 * * *', $$ ... $$);
 نظام تنبيهات انتهاء الصلاحية
 ```
 
-### WhatsApp
-```
-مرحبًا {{recipient_name}}،
-
-🔔 تذكير: {{title}}
-
-📋 الرقم/المرجع: {{item_code}}
-🏢 القسم: {{department_name}}
-📁 الفئة: {{category}}
-📅 تاريخ الانتهاء: {{due_date}}
-⏰ المتبقي: {{remaining_text}}
-
-{{#if creator_note}}📝 ملاحظة: {{creator_note}}
-{{/if}}🔗 {{item_url}}
-
-━━━━━━━━━━━━━━━━
-نظام تنبيهات انتهاء الصلاحية
-```
-
 ---
 
 ## 🛠 التقنيات المستخدمة
@@ -134,6 +361,7 @@ SELECT cron.schedule('daily-reminders-07am-riyadh', '0 4 * * *', $$ ... $$);
 | **Lovable Cloud** | الباك إند (Supabase) |
 | **Edge Functions** | الدوال السحابية |
 | **pg_cron** | جدولة المهام التلقائية |
+| **RLS** | أمان قاعدة البيانات |
 
 ---
 
@@ -146,25 +374,25 @@ src/
 │   ├── layout/          # تخطيط الصفحات
 │   ├── dashboard/       # مكونات لوحة التحكم
 │   ├── items/           # مكونات العناصر
-│   └── workflow/        # مكونات سير العمل
+│   ├── workflow/        # مكونات سير العمل
+│   │   └── CompletionProofDialog.tsx  # نافذة إثبات الإنهاء
+│   └── profile/         # مكونات الملف الشخصي
+│       └── ProfileSettingsForm.tsx    # نموذج إعدادات الحساب
 ├── pages/               # صفحات التطبيق
-│   ├── AutomationDashboard.tsx  # لوحة مراقبة التشغيل
+│   ├── TenantManagement.tsx    # إدارة الشركات
+│   ├── UserProfile.tsx         # الملف الشخصي
 │   └── ...
 ├── hooks/               # React Hooks مخصصة
+│   ├── useTenants.ts           # إدارة الشركات
+│   ├── useItemPermissions.ts   # صلاحيات العناصر
+│   └── ...
 ├── contexts/            # React Context
 ├── types/               # تعريفات TypeScript
+│   └── tenant.ts               # أنواع Multi-Tenant
 └── integrations/        # تكاملات Supabase
 
 supabase/
 ├── functions/           # Edge Functions
-│   ├── ai-advisor/           # مستشار الامتثال
-│   ├── ai-context/           # AI-to-AI Context API
-│   ├── ai-orchestrator/      # Agentic Multi-Agent Orchestrator
-│   ├── automated-reminders/  # التذكيرات التلقائية
-│   ├── prepare-message/      # توليد الرسائل
-│   ├── send-telegram/        # إرسال Telegram
-│   ├── send-whatsapp/        # إرسال WhatsApp
-│   └── ...
 └── migrations/          # ترحيلات قاعدة البيانات
 ```
 
@@ -177,17 +405,14 @@ supabase/
 - تتبع حالة التسليم عبر Webhook
 - تنسيق الأرقام تلقائياً (JID format)
 - Rate Limiting: 5 رسائل/مستلم/يوم
+- **يحترم `allow_whatsapp` في ملف المستخدم**
 
 ### Telegram
 - بوت للتنبيهات التلقائية مع HTML formatting
 - أوامر تفاعلية (`/search`, `/expiring`, `/help`)
 - تسجيل المحادثات
 - Rate Limiting: 5 رسائل/مستلم/يوم
-
-### الذكاء الاصطناعي (Lovable AI)
-- تحليل التقييمات
-- توليد التقارير
-- مستشار الامتثال
+- **يحترم `allow_telegram` في ملف المستخدم**
 
 ---
 
@@ -202,49 +427,16 @@ supabase/
 | `POST /ai-context/runs` | سجل التشغيلات |
 | `POST /ai-context/mcp` | MCP Server metadata |
 
-**المصادقة:** `x-ai-token` header مطلوب
-
-### MCP Layer (Model Context Protocol)
-- Resources: `expiry-sentinel://metadata`, `expiry-sentinel://templates`, `expiry-sentinel://schema`
-- Tools: جميع أدوات الوكلاء متاحة
-
-### Agentic Multi-Agent System
-
-| الوكيل | المسؤولية | الأدوات |
-|--------|-----------|---------|
-| **Orchestrator** | توجيه الطلبات | `route_to_agent`, `get_user_context` |
-| **Reminder** | التذكيرات والقوالب | `get_due_items`, `preview_template`, `get_notification_logs` |
-| **Compliance** | تقارير الامتثال | `calculate_compliance`, `generate_report`, `analyze_risks` |
-| **Performance** | التقييمات | `get_evaluations`, `analyze_evaluation`, `get_cycle_stats` |
-| **Integrations** | قنوات الإرسال | `check_integration_status`, `test_channel`, `analyze_failures` |
-
----
-
-## 📚 API Endpoints الرئيسية
-
-| Endpoint | الوصف | Auth |
-|----------|-------|------|
-| `POST /automated-reminders` | تشغيل التذكيرات | No |
-| `POST /prepare-message` | تحضير رسالة التذكير | No |
-| `POST /send-telegram` | إرسال رسالة Telegram | Yes |
-| `POST /send-whatsapp` | إرسال رسالة WhatsApp | Yes |
-| `POST /ai-advisor` | استشارة الذكاء الاصطناعي | Yes |
-| `POST /ai-orchestrator` | نظام الوكلاء الذكي | Yes |
-| `POST /ai-context/*` | واجهة AI-to-AI | Token |
-
 ---
 
 ## 🔐 الأمان
 
 - Row Level Security (RLS) على جميع الجداول
+- **Multi-Tenant Isolation**: كل شركة معزولة تماماً
 - مصادقة JWT للـ Edge Functions المحمية
-- تشفير المفاتيح الحساسة في جدول `integrations`
+- تشفير المفاتيح الحساسة في جدول `tenant_integrations`
 - سجل تسجيلات الدخول والتدقيق
-- **RLS محسّن**:
-  - `platform_metadata`: فقط للمسؤولين
-  - `ai_agent_configs`: فقط للمسؤولين
-  - `automation_runs`: قراءة للمسؤولين، كتابة للنظام
-  - `rate_limits`: إدارة من النظام فقط
+- **Triggers** لمنع تغيير `tenant_id` بعد الإنشاء
 
 ---
 
@@ -262,17 +454,23 @@ supabase/
 
 ## 🚦 البدء السريع
 
-1. **إنشاء المشروع**: زيارة [Lovable](https://lovable.dev)
-2. **تفعيل Cloud**: يتم تلقائياً
-3. **إعداد التكاملات**: من صفحة "التكاملات"
-4. **إضافة المستخدمين**: من صفحة "إدارة المستخدمين"
-5. **مراقبة التشغيل**: من صفحة "لوحة التشغيل"
+### للمستخدم العادي
+1. استلام دعوة عبر البريد الإلكتروني
+2. فتح رابط الدعوة وإنشاء الحساب
+3. تسجيل الدخول والبدء بالعمل
+
+### لـ System Admin
+1. زيارة صفحة إدارة الشركات
+2. إنشاء شركة جديدة
+3. إعداد التكاملات (WhatsApp/Telegram)
+4. دعوة المستخدمين
 
 ---
 
 ## 📖 الوثائق الإضافية
 
 - [دليل التكاملات](./INTEGRATIONS.md)
+- [دليل Multi-Tenant](./docs/MULTI_TENANT.md)
 - [دليل Lovable](https://docs.lovable.dev)
 
 ---
@@ -286,4 +484,4 @@ supabase/
 ---
 
 **آخر تحديث**: يناير 2026
-**الإصدار**: 2.1.0 (Production Ready)
+**الإصدار**: 3.0.0 (Multi-Tenant Production Ready)
