@@ -4,6 +4,8 @@
 
 This document provides comprehensive documentation for integrating with the Expiry Reminder System via n8n workflows.
 
+> **📢 ملاحظة Multi-Tenant**: منذ الإصدار 3.0، النظام يدعم شركات متعددة. كل شركة لها تكاملات مستقلة في جدول `tenant_integrations`. راجع [دليل Multi-Tenant](./docs/MULTI_TENANT.md) للتفاصيل.
+
 ---
 
 ## Authentication
@@ -25,6 +27,42 @@ Content-Type: application/json
 | `SUPABASE_URL` | `https://aazshokdhlodzaafrifh.supabase.co` |
 | `SUPABASE_ANON_KEY` | Your Supabase anonymous key |
 | `N8N_INTERNAL_KEY` | Shared secret key for n8n authentication |
+
+---
+
+## 🏢 Multi-Tenant Integration Notes
+
+### Per-Tenant API Keys
+
+Each tenant has its own integration settings stored in `tenant_integrations`:
+
+```sql
+SELECT config FROM tenant_integrations 
+WHERE tenant_id = 'your-tenant-uuid' 
+AND integration_key = 'n8n';
+```
+
+### Tenant Context in Edge Functions
+
+Edge functions now receive `tenant_id` context and fetch the appropriate API keys:
+
+```typescript
+// Edge function example
+const tenantConfig = await supabase
+  .from('tenant_integrations')
+  .select('config')
+  .eq('tenant_id', item.tenant_id)
+  .eq('integration_key', 'telegram')
+  .single();
+
+const botToken = tenantConfig.data?.config?.bot_token;
+```
+
+### Important: Data Isolation
+
+- All API calls return only data for the authenticated user's tenant
+- `tenant_id` is automatically enforced via RLS policies
+- System Admin can access all tenants for administrative purposes
 
 ---
 
@@ -519,9 +557,39 @@ All endpoints return consistent error responses:
 2. All sensitive operations require the internal key
 3. Telegram webhook should be verified using the bot token
 4. WhatsApp integration requires Meta Business verification
+5. **Multi-Tenant**: Each tenant's API keys are isolated in `tenant_integrations`
+6. **RLS**: All data queries are automatically filtered by `tenant_id`
+
+---
+
+## Multi-Tenant Workflow Example
+
+### Sending Notifications for Multiple Tenants
+
+```
+1. Cron Trigger (Daily at 7:00 AM Riyadh)
+   ↓
+2. For each active tenant:
+   ↓
+3. Fetch tenant's integration config
+   ↓
+4. Fetch due items for this tenant
+   ↓
+5. For each item → For each recipient:
+   ├─ Check allow_whatsapp/allow_telegram preferences
+   ├─ Use tenant's bot_token/api_key
+   └─ Send notification
+   ↓
+6. Log to notification_log with tenant_id
+```
 
 ---
 
 ## Support
 
 For integration support, contact the system administrator or refer to the main documentation.
+
+---
+
+**Last Updated**: January 2026
+**Version**: 3.0.0 (Multi-Tenant Ready)
