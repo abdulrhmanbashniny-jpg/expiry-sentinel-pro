@@ -181,6 +181,62 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_risk_predictions: {
+        Row: {
+          analyzed_at: string | null
+          confidence_score: number | null
+          created_at: string | null
+          entity_id: string
+          entity_type: string
+          expires_at: string | null
+          id: string
+          predicted_delay_days: number | null
+          recommendations: Json | null
+          risk_factors: Json | null
+          risk_level: string
+          risk_score: number
+          tenant_id: string | null
+        }
+        Insert: {
+          analyzed_at?: string | null
+          confidence_score?: number | null
+          created_at?: string | null
+          entity_id: string
+          entity_type: string
+          expires_at?: string | null
+          id?: string
+          predicted_delay_days?: number | null
+          recommendations?: Json | null
+          risk_factors?: Json | null
+          risk_level: string
+          risk_score: number
+          tenant_id?: string | null
+        }
+        Update: {
+          analyzed_at?: string | null
+          confidence_score?: number | null
+          created_at?: string | null
+          entity_id?: string
+          entity_type?: string
+          expires_at?: string | null
+          id?: string
+          predicted_delay_days?: number | null
+          recommendations?: Json | null
+          risk_factors?: Json | null
+          risk_level?: string
+          risk_score?: number
+          tenant_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_risk_predictions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ai_usage_log: {
         Row: {
           created_at: string
@@ -216,6 +272,65 @@ export type Database = {
           success?: boolean
         }
         Relationships: []
+      }
+      audit_log: {
+        Row: {
+          action: string
+          created_at: string | null
+          entity_id: string | null
+          entity_name: string | null
+          entity_type: string
+          id: string
+          ip_address: string | null
+          metadata: Json | null
+          new_values: Json | null
+          old_values: Json | null
+          tenant_id: string | null
+          user_agent: string | null
+          user_email: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string | null
+          entity_id?: string | null
+          entity_name?: string | null
+          entity_type: string
+          id?: string
+          ip_address?: string | null
+          metadata?: Json | null
+          new_values?: Json | null
+          old_values?: Json | null
+          tenant_id?: string | null
+          user_agent?: string | null
+          user_email?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string | null
+          entity_id?: string | null
+          entity_name?: string | null
+          entity_type?: string
+          id?: string
+          ip_address?: string | null
+          metadata?: Json | null
+          new_values?: Json | null
+          old_values?: Json | null
+          tenant_id?: string | null
+          user_agent?: string | null
+          user_email?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audit_log_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       automation_runs: {
         Row: {
@@ -436,6 +551,143 @@ export type Database = {
           },
         ]
       }
+      contract_alerts: {
+        Row: {
+          alert_date: string
+          alert_type: string
+          contract_id: string | null
+          created_at: string | null
+          id: string
+          is_sent: boolean | null
+          sent_at: string | null
+        }
+        Insert: {
+          alert_date: string
+          alert_type: string
+          contract_id?: string | null
+          created_at?: string | null
+          id?: string
+          is_sent?: boolean | null
+          sent_at?: string | null
+        }
+        Update: {
+          alert_date?: string
+          alert_type?: string
+          contract_id?: string | null
+          created_at?: string | null
+          id?: string
+          is_sent?: boolean | null
+          sent_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contract_alerts_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "contracts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contracts: {
+        Row: {
+          attachment_url: string | null
+          auto_renewed_at: string | null
+          contract_number: string | null
+          contract_type: string
+          created_at: string | null
+          created_by: string | null
+          currency: string | null
+          department_id: string | null
+          end_date: string
+          id: string
+          metadata: Json | null
+          notes: string | null
+          party_contact: string | null
+          party_name: string
+          renewal_period_months: number | null
+          renewal_type: string | null
+          responsible_user_id: string | null
+          start_date: string
+          status: string | null
+          tenant_id: string | null
+          terminated_at: string | null
+          termination_reason: string | null
+          title: string
+          updated_at: string | null
+          value: number | null
+        }
+        Insert: {
+          attachment_url?: string | null
+          auto_renewed_at?: string | null
+          contract_number?: string | null
+          contract_type?: string
+          created_at?: string | null
+          created_by?: string | null
+          currency?: string | null
+          department_id?: string | null
+          end_date: string
+          id?: string
+          metadata?: Json | null
+          notes?: string | null
+          party_contact?: string | null
+          party_name: string
+          renewal_period_months?: number | null
+          renewal_type?: string | null
+          responsible_user_id?: string | null
+          start_date: string
+          status?: string | null
+          tenant_id?: string | null
+          terminated_at?: string | null
+          termination_reason?: string | null
+          title: string
+          updated_at?: string | null
+          value?: number | null
+        }
+        Update: {
+          attachment_url?: string | null
+          auto_renewed_at?: string | null
+          contract_number?: string | null
+          contract_type?: string
+          created_at?: string | null
+          created_by?: string | null
+          currency?: string | null
+          department_id?: string | null
+          end_date?: string
+          id?: string
+          metadata?: Json | null
+          notes?: string | null
+          party_contact?: string | null
+          party_name?: string
+          renewal_period_months?: number | null
+          renewal_type?: string | null
+          responsible_user_id?: string | null
+          start_date?: string
+          status?: string | null
+          tenant_id?: string | null
+          terminated_at?: string | null
+          termination_reason?: string | null
+          title?: string
+          updated_at?: string | null
+          value?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contracts_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contracts_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       conversation_logs: {
         Row: {
           bot_response: string | null
@@ -603,6 +855,56 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "departments_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      document_signatures: {
+        Row: {
+          created_at: string | null
+          document_hash: string | null
+          document_title: string
+          document_url: string
+          expires_at: string | null
+          id: string
+          metadata: Json | null
+          requester_id: string
+          status: string | null
+          tenant_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          document_hash?: string | null
+          document_title: string
+          document_url: string
+          expires_at?: string | null
+          id?: string
+          metadata?: Json | null
+          requester_id: string
+          status?: string | null
+          tenant_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          document_hash?: string | null
+          document_title?: string
+          document_url?: string
+          expires_at?: string | null
+          id?: string
+          metadata?: Json | null
+          requester_id?: string
+          status?: string | null
+          tenant_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_signatures_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
@@ -1955,6 +2257,83 @@ export type Database = {
         }
         Relationships: []
       }
+      service_requests: {
+        Row: {
+          approved_at: string | null
+          approver_id: string | null
+          attachment_url: string | null
+          completed_at: string | null
+          created_at: string | null
+          description: string | null
+          due_date: string | null
+          employee_id: string
+          id: string
+          metadata: Json | null
+          priority: Database["public"]["Enums"]["ticket_priority"] | null
+          rejected_at: string | null
+          rejection_reason: string | null
+          request_number: string | null
+          request_type: string
+          result_attachment_url: string | null
+          status: Database["public"]["Enums"]["service_request_status"] | null
+          tenant_id: string | null
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          approved_at?: string | null
+          approver_id?: string | null
+          attachment_url?: string | null
+          completed_at?: string | null
+          created_at?: string | null
+          description?: string | null
+          due_date?: string | null
+          employee_id: string
+          id?: string
+          metadata?: Json | null
+          priority?: Database["public"]["Enums"]["ticket_priority"] | null
+          rejected_at?: string | null
+          rejection_reason?: string | null
+          request_number?: string | null
+          request_type: string
+          result_attachment_url?: string | null
+          status?: Database["public"]["Enums"]["service_request_status"] | null
+          tenant_id?: string | null
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          approved_at?: string | null
+          approver_id?: string | null
+          attachment_url?: string | null
+          completed_at?: string | null
+          created_at?: string | null
+          description?: string | null
+          due_date?: string | null
+          employee_id?: string
+          id?: string
+          metadata?: Json | null
+          priority?: Database["public"]["Enums"]["ticket_priority"] | null
+          rejected_at?: string | null
+          rejection_reason?: string | null
+          request_number?: string | null
+          request_type?: string
+          result_attachment_url?: string | null
+          status?: Database["public"]["Enums"]["service_request_status"] | null
+          tenant_id?: string | null
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_requests_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       settings: {
         Row: {
           created_at: string
@@ -1978,6 +2357,155 @@ export type Database = {
           value?: Json
         }
         Relationships: []
+      }
+      signature_requests: {
+        Row: {
+          created_at: string | null
+          document_id: string | null
+          id: string
+          ip_address: string | null
+          rejection_reason: string | null
+          reminded_at: string | null
+          sign_order: number | null
+          signature_data: string | null
+          signed_at: string | null
+          signer_email: string | null
+          signer_id: string
+          signer_name: string | null
+          status: Database["public"]["Enums"]["signature_status"] | null
+          user_agent: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          document_id?: string | null
+          id?: string
+          ip_address?: string | null
+          rejection_reason?: string | null
+          reminded_at?: string | null
+          sign_order?: number | null
+          signature_data?: string | null
+          signed_at?: string | null
+          signer_email?: string | null
+          signer_id: string
+          signer_name?: string | null
+          status?: Database["public"]["Enums"]["signature_status"] | null
+          user_agent?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          document_id?: string | null
+          id?: string
+          ip_address?: string | null
+          rejection_reason?: string | null
+          reminded_at?: string | null
+          sign_order?: number | null
+          signature_data?: string | null
+          signed_at?: string | null
+          signer_email?: string | null
+          signer_id?: string
+          signer_name?: string | null
+          status?: Database["public"]["Enums"]["signature_status"] | null
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "signature_requests_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "document_signatures"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      support_tickets: {
+        Row: {
+          assigned_to: string | null
+          attachment_url: string | null
+          category: string
+          closed_at: string | null
+          created_at: string | null
+          department_id: string | null
+          description: string | null
+          first_response_at: string | null
+          id: string
+          metadata: Json | null
+          priority: Database["public"]["Enums"]["ticket_priority"] | null
+          requester_id: string
+          resolved_at: string | null
+          satisfaction_comment: string | null
+          satisfaction_rating: number | null
+          sla_deadline: string | null
+          sla_hours: number | null
+          status: Database["public"]["Enums"]["ticket_status"] | null
+          tenant_id: string | null
+          ticket_number: string | null
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          assigned_to?: string | null
+          attachment_url?: string | null
+          category: string
+          closed_at?: string | null
+          created_at?: string | null
+          department_id?: string | null
+          description?: string | null
+          first_response_at?: string | null
+          id?: string
+          metadata?: Json | null
+          priority?: Database["public"]["Enums"]["ticket_priority"] | null
+          requester_id: string
+          resolved_at?: string | null
+          satisfaction_comment?: string | null
+          satisfaction_rating?: number | null
+          sla_deadline?: string | null
+          sla_hours?: number | null
+          status?: Database["public"]["Enums"]["ticket_status"] | null
+          tenant_id?: string | null
+          ticket_number?: string | null
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          assigned_to?: string | null
+          attachment_url?: string | null
+          category?: string
+          closed_at?: string | null
+          created_at?: string | null
+          department_id?: string | null
+          description?: string | null
+          first_response_at?: string | null
+          id?: string
+          metadata?: Json | null
+          priority?: Database["public"]["Enums"]["ticket_priority"] | null
+          requester_id?: string
+          resolved_at?: string | null
+          satisfaction_comment?: string | null
+          satisfaction_rating?: number | null
+          sla_deadline?: string | null
+          sla_hours?: number | null
+          status?: Database["public"]["Enums"]["ticket_status"] | null
+          tenant_id?: string | null
+          ticket_number?: string | null
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_tickets_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "support_tickets_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       team_members: {
         Row: {
@@ -2152,6 +2680,44 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      ticket_replies: {
+        Row: {
+          attachment_url: string | null
+          created_at: string | null
+          id: string
+          is_internal: boolean | null
+          message: string
+          ticket_id: string | null
+          user_id: string
+        }
+        Insert: {
+          attachment_url?: string | null
+          created_at?: string | null
+          id?: string
+          is_internal?: boolean | null
+          message: string
+          ticket_id?: string | null
+          user_id: string
+        }
+        Update: {
+          attachment_url?: string | null
+          created_at?: string | null
+          id?: string
+          is_internal?: boolean | null
+          message?: string
+          ticket_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ticket_replies_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "support_tickets"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_department_scopes: {
         Row: {
@@ -2464,6 +3030,15 @@ export type Database = {
         | "finished"
       notification_status: "pending" | "sent" | "failed" | "skipped"
       question_answer_type: "numeric" | "choice" | "text"
+      service_request_status:
+        | "pending"
+        | "approved"
+        | "rejected"
+        | "processing"
+        | "completed"
+      signature_status: "pending" | "signed" | "rejected" | "expired"
+      ticket_priority: "low" | "medium" | "high" | "urgent"
+      ticket_status: "open" | "in_progress" | "pending" | "resolved" | "closed"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -2636,6 +3211,16 @@ export const Constants = {
       ],
       notification_status: ["pending", "sent", "failed", "skipped"],
       question_answer_type: ["numeric", "choice", "text"],
+      service_request_status: [
+        "pending",
+        "approved",
+        "rejected",
+        "processing",
+        "completed",
+      ],
+      signature_status: ["pending", "signed", "rejected", "expired"],
+      ticket_priority: ["low", "medium", "high", "urgent"],
+      ticket_status: ["open", "in_progress", "pending", "resolved", "closed"],
     },
   },
 } as const

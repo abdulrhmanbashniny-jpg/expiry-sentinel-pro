@@ -24,6 +24,11 @@ import {
   MessageSquareText,
   ListPlus,
   Activity,
+  FileSignature,
+  Ticket,
+  Briefcase,
+  History,
+  UserCircle2,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -68,6 +73,11 @@ const navItems: NavItem[] = [
   { to: '/integrations', icon: Link2, label: 'التكاملات', minRole: 'system_admin' },
   { to: '/permission-management', icon: Shield, label: 'إدارة الصلاحيات', minRole: 'system_admin' },
   { to: '/automation-dashboard', icon: Activity, label: 'لوحة التشغيل', minRole: 'admin' },
+  { to: '/contracts', icon: Briefcase, label: 'إدارة العقود', minRole: 'admin' },
+  { to: '/support-tickets', icon: Ticket, label: 'تذاكر الدعم' },
+  { to: '/employee-portal', icon: UserCircle2, label: 'بوابة الموظف' },
+  { to: '/document-signatures', icon: FileSignature, label: 'التوقيع الإلكتروني', minRole: 'admin' },
+  { to: '/audit-log', icon: History, label: 'سجل التدقيق', minRole: 'system_admin' },
   { to: '/security', icon: Shield, label: 'الأمان', minRole: 'system_admin' },
   { to: '/settings', icon: Settings, label: 'الإعدادات', minRole: 'admin' },
   { to: '/profile', icon: UserCircle, label: 'ملفي الشخصي' },
