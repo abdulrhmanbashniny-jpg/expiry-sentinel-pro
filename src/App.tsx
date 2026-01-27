@@ -39,6 +39,11 @@ import AutomationDashboard from "./pages/AutomationDashboard";
 import PermissionManagement from "./pages/PermissionManagement";
 import ImportTemplates from "./pages/ImportTemplates";
 import TenantManagement from "./pages/TenantManagement";
+import Contracts from "./pages/Contracts";
+import SupportTickets from "./pages/SupportTickets";
+import EmployeePortal from "./pages/EmployeePortal";
+import AuditLog from "./pages/AuditLog";
+import DocumentSignatures from "./pages/DocumentSignatures";
 import NotFound from "./pages/NotFound";
 import { Loader2 } from "lucide-react";
 
@@ -108,6 +113,11 @@ const AppRoutes = () => {
         <Route path="permission-management" element={<PermissionManagement />} />
         <Route path="import-templates" element={<ImportTemplates />} />
         <Route path="tenant-management" element={<TenantManagement />} />
+        <Route path="contracts" element={<Contracts />} />
+        <Route path="support-tickets" element={<SupportTickets />} />
+        <Route path="employee-portal" element={<EmployeePortal />} />
+        <Route path="audit-log" element={<AuditLog />} />
+        <Route path="document-signatures" element={<DocumentSignatures />} />
       </Route>
       <Route path="*" element={<NotFound />} />
     </Routes>
