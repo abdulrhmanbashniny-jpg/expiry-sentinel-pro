@@ -55,6 +55,7 @@ const navItems: NavItem[] = [
   { to: '/recipients', icon: Users, label: 'المستلمون', minRole: 'supervisor' },
   { to: '/categories', icon: FolderOpen, label: 'الفئات', minRole: 'admin' },
   { to: '/departments', icon: Building2, label: 'الأقسام', minRole: 'admin' },
+  { to: '/reminders', icon: Bell, label: 'مركز التذكيرات', minRole: 'supervisor' },
   { to: '/reminder-rules', icon: Bell, label: 'قواعد التذكير', minRole: 'admin' },
   { to: '/message-templates', icon: MessageSquareText, label: 'قوالب الرسائل', minRole: 'admin' },
   { to: '/dynamic-fields', icon: ListPlus, label: 'الحقول الديناميكية', minRole: 'admin' },

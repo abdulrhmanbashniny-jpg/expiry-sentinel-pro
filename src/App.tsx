@@ -15,6 +15,7 @@ import NewItem from "./pages/NewItem";
 import Recipients from "./pages/Recipients";
 import Categories from "./pages/Categories";
 import ReminderRules from "./pages/ReminderRules";
+import ReminderDashboard from "./pages/ReminderDashboard";
 import Settings from "./pages/Settings";
 import Integration from "./pages/Integration";
 import Integrations from "./pages/Integrations";
@@ -88,6 +89,7 @@ const AppRoutes = () => {
         <Route path="recipients" element={<Recipients />} />
         <Route path="categories" element={<Categories />} />
         <Route path="reminder-rules" element={<ReminderRules />} />
+        <Route path="reminders" element={<ReminderDashboard />} />
         <Route path="settings" element={<Settings />} />
         <Route path="security" element={<Security />} />
         <Route path="team-management" element={<TeamManagement />} />

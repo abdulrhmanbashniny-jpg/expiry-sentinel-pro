@@ -1330,6 +1330,112 @@ export type Database = {
           },
         ]
       }
+      feature_toggles: {
+        Row: {
+          config: Json | null
+          created_at: string | null
+          description: string | null
+          feature_key: string
+          feature_name: string
+          feature_name_en: string | null
+          id: string
+          is_enabled: boolean | null
+          min_role: string | null
+          tenant_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          config?: Json | null
+          created_at?: string | null
+          description?: string | null
+          feature_key: string
+          feature_name: string
+          feature_name_en?: string | null
+          id?: string
+          is_enabled?: boolean | null
+          min_role?: string | null
+          tenant_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          config?: Json | null
+          created_at?: string | null
+          description?: string | null
+          feature_key?: string
+          feature_name?: string
+          feature_name_en?: string | null
+          id?: string
+          is_enabled?: boolean | null
+          min_role?: string | null
+          tenant_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "feature_toggles_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      in_app_notifications: {
+        Row: {
+          action_url: string | null
+          created_at: string | null
+          entity_id: string | null
+          entity_type: string | null
+          id: string
+          is_read: boolean | null
+          message: string
+          metadata: Json | null
+          priority: string | null
+          read_at: string | null
+          tenant_id: string | null
+          title: string
+          user_id: string
+        }
+        Insert: {
+          action_url?: string | null
+          created_at?: string | null
+          entity_id?: string | null
+          entity_type?: string | null
+          id?: string
+          is_read?: boolean | null
+          message: string
+          metadata?: Json | null
+          priority?: string | null
+          read_at?: string | null
+          tenant_id?: string | null
+          title: string
+          user_id: string
+        }
+        Update: {
+          action_url?: string | null
+          created_at?: string | null
+          entity_id?: string | null
+          entity_type?: string | null
+          id?: string
+          is_read?: boolean | null
+          message?: string
+          metadata?: Json | null
+          priority?: string | null
+          read_at?: string | null
+          tenant_id?: string | null
+          title?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "in_app_notifications_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       integrations: {
         Row: {
           config: Json
@@ -1848,60 +1954,75 @@ export type Database = {
           channel: string | null
           created_at: string
           delay_reason: string | null
+          entity_id: string | null
+          entity_type: string | null
           error_message: string | null
           escalated_to_admin_at: string | null
           escalated_to_supervisor_at: string | null
           escalation_status: string | null
           id: string
           item_id: string
+          message_preview: string | null
           provider_message_id: string | null
           recipient_id: string
           reminder_day: number
+          rule_id: string | null
           scheduled_for: string
           seen_at: string | null
           seen_by_user_id: string | null
           sent_at: string | null
           status: Database["public"]["Enums"]["notification_status"]
+          template_id: string | null
           tenant_id: string | null
         }
         Insert: {
           channel?: string | null
           created_at?: string
           delay_reason?: string | null
+          entity_id?: string | null
+          entity_type?: string | null
           error_message?: string | null
           escalated_to_admin_at?: string | null
           escalated_to_supervisor_at?: string | null
           escalation_status?: string | null
           id?: string
           item_id: string
+          message_preview?: string | null
           provider_message_id?: string | null
           recipient_id: string
           reminder_day: number
+          rule_id?: string | null
           scheduled_for: string
           seen_at?: string | null
           seen_by_user_id?: string | null
           sent_at?: string | null
           status?: Database["public"]["Enums"]["notification_status"]
+          template_id?: string | null
           tenant_id?: string | null
         }
         Update: {
           channel?: string | null
           created_at?: string
           delay_reason?: string | null
+          entity_id?: string | null
+          entity_type?: string | null
           error_message?: string | null
           escalated_to_admin_at?: string | null
           escalated_to_supervisor_at?: string | null
           escalation_status?: string | null
           id?: string
           item_id?: string
+          message_preview?: string | null
           provider_message_id?: string | null
           recipient_id?: string
           reminder_day?: number
+          rule_id?: string | null
           scheduled_for?: string
           seen_at?: string | null
           seen_by_user_id?: string | null
           sent_at?: string | null
           status?: Database["public"]["Enums"]["notification_status"]
+          template_id?: string | null
           tenant_id?: string | null
         }
         Relationships: [
@@ -1917,6 +2038,20 @@ export type Database = {
             columns: ["recipient_id"]
             isOneToOne: false
             referencedRelation: "recipients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notification_log_rule_id_fkey"
+            columns: ["rule_id"]
+            isOneToOne: false
+            referencedRelation: "reminder_rules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notification_log_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "message_templates"
             referencedColumns: ["id"]
           },
           {
@@ -2191,30 +2326,58 @@ export type Database = {
       }
       reminder_rules: {
         Row: {
+          channels: string[] | null
           created_at: string
           days_before: number[]
+          description: string | null
           id: string
           is_active: boolean
           name: string
+          priority: number | null
+          target_entity_type: string
+          target_field: string
+          template_id: string | null
           tenant_id: string | null
+          updated_at: string | null
         }
         Insert: {
+          channels?: string[] | null
           created_at?: string
           days_before?: number[]
+          description?: string | null
           id?: string
           is_active?: boolean
           name: string
+          priority?: number | null
+          target_entity_type?: string
+          target_field?: string
+          template_id?: string | null
           tenant_id?: string | null
+          updated_at?: string | null
         }
         Update: {
+          channels?: string[] | null
           created_at?: string
           days_before?: number[]
+          description?: string | null
           id?: string
           is_active?: boolean
           name?: string
+          priority?: number | null
+          target_entity_type?: string
+          target_field?: string
+          template_id?: string | null
           tenant_id?: string | null
+          updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "reminder_rules_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "message_templates"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "reminder_rules_tenant_id_fkey"
             columns: ["tenant_id"]
@@ -2930,6 +3093,7 @@ export type Database = {
         Args: { _department_id: string; _user_id: string }
         Returns: boolean
       }
+      is_feature_enabled: { Args: { _feature_key: string }; Returns: boolean }
       is_item_recipient: {
         Args: { item_uuid: string; user_uuid: string }
         Returns: boolean
