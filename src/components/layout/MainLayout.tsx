@@ -6,7 +6,7 @@ import { Menu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { NotificationBell } from './NotificationBell';
-import { TenantDisplay } from './TenantDisplay';
+import { TenantSwitcher } from './TenantSwitcher';
 
 export const MainLayout: React.FC = () => {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -41,7 +41,7 @@ export const MainLayout: React.FC = () => {
               />
             </SheetContent>
           </Sheet>
-          <TenantDisplay />
+          <TenantSwitcher />
         </div>
         <NotificationBell />
       </header>
@@ -51,7 +51,7 @@ export const MainLayout: React.FC = () => {
         'hidden lg:flex fixed top-0 right-0 z-40 h-14 items-center justify-between border-b bg-background/95 backdrop-blur px-6 transition-all duration-300',
         isSidebarCollapsed ? 'left-20' : 'left-64'
       )}>
-        <TenantDisplay />
+        <TenantSwitcher />
         <NotificationBell />
       </div>
 

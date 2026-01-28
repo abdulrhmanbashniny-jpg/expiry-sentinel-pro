@@ -2997,38 +2997,69 @@ export type Database = {
       user_invitations: {
         Row: {
           accepted_at: string | null
+          activated_at: string | null
           created_at: string
+          department_id: string | null
           email: string
+          employee_number: string | null
           expires_at: string
+          full_name: string | null
           id: string
           invited_by: string
+          last_resent_at: string | null
+          phone: string | null
+          resent_count: number | null
           role: string
+          status: string | null
           tenant_id: string
           token: string
         }
         Insert: {
           accepted_at?: string | null
+          activated_at?: string | null
           created_at?: string
+          department_id?: string | null
           email: string
+          employee_number?: string | null
           expires_at?: string
+          full_name?: string | null
           id?: string
           invited_by: string
+          last_resent_at?: string | null
+          phone?: string | null
+          resent_count?: number | null
           role?: string
+          status?: string | null
           tenant_id: string
           token?: string
         }
         Update: {
           accepted_at?: string | null
+          activated_at?: string | null
           created_at?: string
+          department_id?: string | null
           email?: string
+          employee_number?: string | null
           expires_at?: string
+          full_name?: string | null
           id?: string
           invited_by?: string
+          last_resent_at?: string | null
+          phone?: string | null
+          resent_count?: number | null
           role?: string
+          status?: string | null
           tenant_id?: string
           token?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "user_invitations_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "user_invitations_tenant_id_fkey"
             columns: ["tenant_id"]
@@ -3157,6 +3188,7 @@ export type Database = {
         Args: { item_id: string; user_id: string }
         Returns: boolean
       }
+      is_platform_admin: { Args: { user_uuid: string }; Returns: boolean }
       is_supervisor_of: {
         Args: { _employee_id: string; _supervisor_id: string }
         Returns: boolean
@@ -3206,14 +3238,25 @@ export type Database = {
           synced_users: string[]
         }[]
       }
-      validate_user_tenant: {
-        Args: { p_email: string; p_tenant_id: string }
-        Returns: {
-          is_valid: boolean
-          profile_id: string
-          user_id: string
-        }[]
-      }
+      validate_user_tenant:
+        | {
+            Args: { p_company_code: string; p_email: string }
+            Returns: {
+              is_platform_admin: boolean
+              tenant_code: string
+              tenant_id: string
+              tenant_name: string
+              user_id: string
+            }[]
+          }
+        | {
+            Args: { p_email: string; p_tenant_id: string }
+            Returns: {
+              is_valid: boolean
+              profile_id: string
+              user_id: string
+            }[]
+          }
     }
     Enums: {
       app_role: "admin" | "hr_user" | "system_admin" | "supervisor" | "employee"

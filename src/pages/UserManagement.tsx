@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTenant } from '@/contexts/TenantContext';
 import { useTeamManagement } from '@/hooks/useTeamManagement';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -15,14 +16,16 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { 
   Users, Search, Edit, MessageCircle, Send, Loader2,
-  UserX, Trash2, AlertTriangle, UserPlus, CheckSquare
+  UserX, Trash2, AlertTriangle, UserPlus, CheckSquare, Mail
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { ROLE_LABELS, AppRole } from '@/types/database';
+import { InviteUserDialog } from '@/components/users/InviteUserDialog';
 
 export default function UserManagement() {
   const { isSystemAdmin, isAdmin } = useAuth();
+  const { currentTenant } = useTenant();
   const { users, departments, isLoading, refetch, addUserToDepartment } = useTeamManagement();
   const { toast } = useToast();
   
@@ -64,6 +67,9 @@ export default function UserManagement() {
     department_id: '',
     password: '',
   });
+
+  // Invite user dialog
+  const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
 
   const canEdit = isSystemAdmin || isAdmin;
 
@@ -375,6 +381,12 @@ export default function UserManagement() {
             >
               <Trash2 className="h-4 w-4" />
               حذف المحددين ({selectedUsers.size})
+            </Button>
+          )}
+          {(isSystemAdmin || isAdmin) && currentTenant && (
+            <Button onClick={() => setInviteDialogOpen(true)} className="gap-1" variant="outline">
+              <Mail className="h-4 w-4" />
+              دعوة موظف
             </Button>
           )}
           {isSystemAdmin && (
@@ -876,6 +888,14 @@ export default function UserManagement() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Invite User Dialog */}
+      <InviteUserDialog
+        open={inviteDialogOpen}
+        onOpenChange={setInviteDialogOpen}
+        departments={departments.map(d => ({ id: d.id, name: d.name }))}
+        onSuccess={refetch}
+      />
     </div>
   );
 }
