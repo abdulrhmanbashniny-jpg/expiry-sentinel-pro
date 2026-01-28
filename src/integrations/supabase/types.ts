@@ -2145,6 +2145,7 @@ export type Database = {
           must_change_password: boolean
           national_id: string | null
           phone: string | null
+          receives_notifications: boolean | null
           telegram_user_id: string | null
           tenant_id: string | null
           updated_at: string
@@ -2165,6 +2166,7 @@ export type Database = {
           must_change_password?: boolean
           national_id?: string | null
           phone?: string | null
+          receives_notifications?: boolean | null
           telegram_user_id?: string | null
           tenant_id?: string | null
           updated_at?: string
@@ -2185,6 +2187,7 @@ export type Database = {
           must_change_password?: boolean
           national_id?: string | null
           phone?: string | null
+          receives_notifications?: boolean | null
           telegram_user_id?: string | null
           tenant_id?: string | null
           updated_at?: string
@@ -2746,6 +2749,47 @@ export type Database = {
           },
         ]
       }
+      tenant_settings: {
+        Row: {
+          allow_public_registration: boolean | null
+          created_at: string
+          id: string
+          invitation_validity_days: number | null
+          require_email_verification: boolean | null
+          tenant_id: string
+          updated_at: string
+          who_can_invite: string[] | null
+        }
+        Insert: {
+          allow_public_registration?: boolean | null
+          created_at?: string
+          id?: string
+          invitation_validity_days?: number | null
+          require_email_verification?: boolean | null
+          tenant_id: string
+          updated_at?: string
+          who_can_invite?: string[] | null
+        }
+        Update: {
+          allow_public_registration?: boolean | null
+          created_at?: string
+          id?: string
+          invitation_validity_days?: number | null
+          require_email_verification?: boolean | null
+          tenant_id?: string
+          updated_at?: string
+          who_can_invite?: string[] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_settings_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tenant_usage_stats: {
         Row: {
           ai_calls: number | null
@@ -3071,6 +3115,17 @@ export type Database = {
         Args: { _supervisor_id: string }
         Returns: string[]
       }
+      get_tenant_by_code: {
+        Args: { p_code: string }
+        Returns: {
+          code: string
+          id: string
+          is_active: boolean
+          logo_url: string
+          name: string
+          name_en: string
+        }[]
+      }
       get_user_department_ids: { Args: { _user_id: string }; Returns: string[] }
       get_user_role: {
         Args: { _user_id: string }
@@ -3149,6 +3204,14 @@ export type Database = {
         Returns: {
           synced_count: number
           synced_users: string[]
+        }[]
+      }
+      validate_user_tenant: {
+        Args: { p_email: string; p_tenant_id: string }
+        Returns: {
+          is_valid: boolean
+          profile_id: string
+          user_id: string
         }[]
       }
     }
