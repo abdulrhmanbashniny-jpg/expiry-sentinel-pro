@@ -89,12 +89,30 @@ export const Auth: React.FC = () => {
     }
   }, [user, loading, navigate]);
 
+  // Check for ADMIN code (platform admin login)
+  const isAdminCode = loginData.companyCode.toUpperCase() === 'ADMIN';
+
   // Validate company code when it changes
   useEffect(() => {
     const validateTenant = async () => {
       if (loginData.companyCode.length < 2) {
         setTenantInfo(null);
         setTenantError(null);
+        return;
+      }
+
+      // Special case: ADMIN code for platform admins
+      if (loginData.companyCode.toUpperCase() === 'ADMIN') {
+        setTenantInfo({
+          id: 'admin',
+          name: 'إدارة النظام',
+          name_en: 'System Administration',
+          code: 'ADMIN',
+          is_active: true,
+          logo_url: null,
+        });
+        setTenantError(null);
+        setTenantLoading(false);
         return;
       }
 
@@ -161,28 +179,37 @@ export const Auth: React.FC = () => {
 
     setIsSubmitting(true);
     
-    // First, validate user belongs to this tenant
+    // Use the updated validate_user_tenant function that handles ADMIN code
     const { data: userTenantData, error: userTenantError } = await supabase.rpc(
       'validate_user_tenant',
-      { p_email: loginData.email, p_tenant_id: tenantInfo.id }
+      { p_email: loginData.email, p_company_code: loginData.companyCode }
     );
 
-    if (userTenantError || !userTenantData || userTenantData.length === 0) {
+    if (userTenantError) {
       setIsSubmitting(false);
+      let errorMessage = 'حدث خطأ في التحقق';
+      
+      if (userTenantError.message?.includes('Not a platform administrator')) {
+        errorMessage = 'غير مصرح لك بالدخول كمدير نظام';
+      } else if (userTenantError.message?.includes('Company not found')) {
+        errorMessage = 'كود الشركة غير موجود';
+      } else if (userTenantError.message?.includes('User not found')) {
+        errorMessage = 'البريد الإلكتروني غير مسجل في هذه الشركة';
+      }
+      
       toast({
         title: 'خطأ في تسجيل الدخول',
-        description: 'البريد الإلكتروني غير مسجل في هذه الشركة',
+        description: errorMessage,
         variant: 'destructive',
       });
       return;
     }
 
-    const userValidation = userTenantData[0];
-    if (!userValidation.is_valid) {
+    if (!userTenantData || userTenantData.length === 0) {
       setIsSubmitting(false);
       toast({
         title: 'خطأ في تسجيل الدخول',
-        description: 'هذا الحساب لا ينتمي لهذه الشركة',
+        description: 'البريد الإلكتروني غير مسجل في هذه الشركة',
         variant: 'destructive',
       });
       return;
@@ -304,19 +331,22 @@ export const Auth: React.FC = () => {
                         placeholder="مثال: JPF"
                         value={loginData.companyCode}
                         onChange={(e) => setLoginData({ ...loginData, companyCode: e.target.value.toUpperCase() })}
-                        className={`uppercase ${errors.companyCode || tenantError ? 'border-destructive' : tenantInfo ? 'border-green-500' : ''}`}
+                        className={`uppercase ${errors.companyCode || tenantError ? 'border-destructive' : tenantInfo ? (isAdminCode ? 'border-yellow-500' : 'border-green-500') : ''}`}
                         dir="ltr"
                       />
                       {tenantLoading && (
                         <Loader2 className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground" />
                       )}
                       {tenantInfo && !tenantLoading && (
-                        <CheckCircle2 className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-green-500" />
+                        <CheckCircle2 className={`absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 ${isAdminCode ? 'text-yellow-500' : 'text-green-500'}`} />
                       )}
                       {tenantError && !tenantLoading && (
                         <AlertCircle className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-destructive" />
                       )}
                     </div>
+                    <p className="text-xs text-muted-foreground">
+                      💡 أدخل <span className="font-mono bg-muted px-1 rounded">ADMIN</span> للوصول كمدير نظام
+                    </p>
                     {errors.companyCode && (
                       <p className="text-sm text-destructive">{errors.companyCode}</p>
                     )}
@@ -324,10 +354,10 @@ export const Auth: React.FC = () => {
                       <p className="text-sm text-destructive">{tenantError}</p>
                     )}
                     {tenantInfo && (
-                      <Alert className="bg-green-50 border-green-200">
-                        <CheckCircle2 className="h-4 w-4 text-green-600" />
-                        <AlertDescription className="text-green-700">
-                          {tenantInfo.name}
+                      <Alert className={isAdminCode ? 'bg-yellow-50 border-yellow-200' : 'bg-green-50 border-green-200'}>
+                        <CheckCircle2 className={`h-4 w-4 ${isAdminCode ? 'text-yellow-600' : 'text-green-600'}`} />
+                        <AlertDescription className={isAdminCode ? 'text-yellow-700' : 'text-green-700'}>
+                          {isAdminCode ? '👑 ' : ''}{tenantInfo.name}
                         </AlertDescription>
                       </Alert>
                     )}
