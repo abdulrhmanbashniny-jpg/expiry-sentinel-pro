@@ -159,30 +159,10 @@ export const InviteUserDialog: React.FC<InviteUserDialogProps> = ({
       const activationLink = `${baseUrl}/activate?token=${token}&company=${currentTenant.code}`;
       setInviteLink(activationLink);
 
-      // Send email notification (if enabled)
+      // Email notification - currently disabled (no email service configured)
+      // Invitation is available via activation link or WhatsApp
       if (form.send_email) {
-        try {
-          await supabase.functions.invoke('send-notification', {
-            body: {
-              type: 'invitation',
-              channel: 'email',
-              recipient: {
-                email: form.email,
-                name: form.full_name,
-              },
-              data: {
-                company_name: currentTenant.name,
-                company_code: currentTenant.code,
-                employee_number: form.employee_number,
-                department: departments.find(d => d.id === form.department_id)?.name,
-                role: ROLE_LABELS[form.role],
-                activation_link: activationLink,
-              },
-            },
-          });
-        } catch (emailErr) {
-          console.warn('Email sending failed:', emailErr);
-        }
+        console.log('Email invitation requested but no email service configured. Use activation link or WhatsApp.');
       }
 
       // Send WhatsApp notification (if enabled and phone provided)
