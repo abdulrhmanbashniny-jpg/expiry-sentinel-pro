@@ -52,33 +52,19 @@ export default function ActivateAccount() {
       }
 
       try {
-        // Fetch invitation details with explicit type casting
+        // Use secure RPC function to get invitation by token
         const { data: invitationData, error: invError } = await supabase
-          .from('user_invitations')
-          .select(`
-            id,
-            email,
-            full_name,
-            employee_number,
-            role,
-            phone,
-            expires_at,
-            status,
-            tenant_id
-          `)
-          .eq('token', token)
-          .maybeSingle();
+          .rpc('get_invitation_by_token', { p_token: token });
 
         if (invError) throw invError;
 
-        if (!invitationData) {
+        if (!invitationData || invitationData.length === 0) {
           setError('رابط التفعيل غير موجود أو منتهي الصلاحية');
           setIsLoading(false);
           return;
         }
 
-        // Type assertion for the data
-        const invData = invitationData as any;
+        const invData = invitationData[0];
 
         // Check if already used
         if (invData.status === 'accepted') {
@@ -87,19 +73,17 @@ export default function ActivateAccount() {
           return;
         }
 
-        // Check expiration
-        if (new Date(invData.expires_at) < new Date()) {
-          setError('انتهت صلاحية رابط التفعيل. يرجى طلب دعوة جديدة من المدير.');
-          setIsLoading(false);
-          return;
+        // Fetch tenant info separately using RPC or public data
+        let tenantData = null;
+        if (invData.tenant_id) {
+          // Try to get tenant info - this may fail for anon users, which is fine
+          const { data: tData } = await supabase
+            .from('tenants')
+            .select('name, name_en, code')
+            .eq('id', invData.tenant_id)
+            .maybeSingle();
+          tenantData = tData;
         }
-
-        // Fetch tenant info separately
-        const { data: tenantData } = await supabase
-          .from('tenants')
-          .select('name, name_en, code')
-          .eq('id', invData.tenant_id)
-          .single();
 
         setInvitation({
           id: invData.id,
@@ -108,7 +92,7 @@ export default function ActivateAccount() {
           employee_number: invData.employee_number,
           role: invData.role,
           phone: invData.phone,
-          tenant: tenantData as any,
+          tenant: tenantData || { name: companyCode, name_en: null, code: companyCode },
           department: undefined,
           expires_at: invData.expires_at,
         });
@@ -136,7 +120,7 @@ export default function ActivateAccount() {
       return;
     }
 
-    if (!invitation) return;
+    if (!invitation || !token) return;
 
     setIsActivating(true);
 
@@ -156,14 +140,14 @@ export default function ActivateAccount() {
 
       if (authError) throw authError;
 
-      // Update invitation status
-      await supabase
-        .from('user_invitations')
-        .update({ 
-          status: 'accepted',
-          activated_at: new Date().toISOString(),
-        })
-        .eq('id', invitation.id);
+      // Use secure RPC function to activate invitation
+      const { data: activated, error: activateError } = await supabase
+        .rpc('activate_invitation', { p_token: token });
+
+      if (activateError) {
+        console.error('Failed to update invitation status:', activateError);
+        // Don't throw - the user was created successfully
+      }
 
       toast({
         title: 'تم تفعيل الحساب بنجاح! 🎉',
