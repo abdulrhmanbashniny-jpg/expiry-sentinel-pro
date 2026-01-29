@@ -3,12 +3,39 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.89.0";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-telegram-bot-api-secret-token',
 };
+
+// Verify Telegram webhook secret (optional but recommended)
+function verifyTelegramSecret(req: Request): boolean {
+  const secretToken = Deno.env.get('TELEGRAM_WEBHOOK_SECRET');
+  
+  // If no secret is configured, allow all requests (backward compatible)
+  if (!secretToken) {
+    console.warn('TELEGRAM_WEBHOOK_SECRET not set - accepting all requests');
+    return true;
+  }
+  
+  const requestSecret = req.headers.get('x-telegram-bot-api-secret-token');
+  if (requestSecret !== secretToken) {
+    console.error('Invalid Telegram webhook secret');
+    return false;
+  }
+  
+  return true;
+}
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
+  }
+
+  // Security: Verify the request is from Telegram
+  if (!verifyTelegramSecret(req)) {
+    return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+      status: 401,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
   }
 
   try {

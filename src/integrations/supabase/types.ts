@@ -3171,6 +3171,7 @@ export type Database = {
       }
     }
     Functions: {
+      activate_invitation: { Args: { p_token: string }; Returns: boolean }
       can_view_department: {
         Args: { _department_id: string; _user_id: string }
         Returns: boolean
@@ -3198,6 +3199,20 @@ export type Database = {
         }[]
       }
       get_current_tenant_id: { Args: never; Returns: string }
+      get_invitation_by_token: {
+        Args: { p_token: string }
+        Returns: {
+          email: string
+          employee_number: string
+          expires_at: string
+          full_name: string
+          id: string
+          phone: string
+          role: string
+          status: string
+          tenant_id: string
+        }[]
+      }
       get_team_member_ids: {
         Args: { _supervisor_id: string }
         Returns: string[]
