@@ -1,445 +1,319 @@
-# دليل Multi-Tenant الشامل
+# Multi-Tenant Architecture Guide
 
-## 📋 نظرة عامة
+## Overview
 
-يدعم النظام استضافة **شركات متعددة** على نفس المنصة مع **فصل تام للبيانات**. كل شركة (Tenant) لها:
-- مستخدمون مستقلون
-- بيانات معزولة (عناصر، أقسام، فئات...)
-- تكاملات خاصة (API Keys مختلفة)
-- إعدادات مستقلة
+Expiry Sentinel Pro implements a **row-level security (RLS) based multi-tenant architecture** that provides complete data isolation between companies while running on a single database.
 
 ---
 
-## 🏗️ البنية التقنية
+## 🏗️ Architecture Design
 
-### الجداول الرئيسية
+### Single Database, Multiple Tenants
 
-```sql
--- جدول الشركات
-CREATE TABLE public.tenants (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  name text NOT NULL,                    -- الاسم بالعربي
-  name_en text,                          -- الاسم بالإنجليزي
-  code text UNIQUE NOT NULL,             -- كود فريد (مثل ACME)
-  logo_url text,                         -- شعار الشركة
-  domain text,                           -- نطاق مخصص (اختياري)
-  settings jsonb DEFAULT '{}',           -- إعدادات إضافية
-  subscription_plan text DEFAULT 'basic', -- خطة الاشتراك
-  max_users int DEFAULT 50,              -- الحد الأقصى للمستخدمين
-  max_items int DEFAULT 1000,            -- الحد الأقصى للعناصر
-  is_active boolean DEFAULT true,        -- هل الشركة نشطة؟
-  trial_ends_at timestamptz,             -- تاريخ انتهاء التجربة
-  created_at timestamptz DEFAULT now(),
-  updated_at timestamptz DEFAULT now()
-);
-
--- تكاملات كل شركة
-CREATE TABLE public.tenant_integrations (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  tenant_id uuid NOT NULL REFERENCES tenants(id),
-  integration_key text NOT NULL,         -- telegram, whatsapp, n8n, ai
-  config jsonb NOT NULL DEFAULT '{}',    -- الإعدادات
-  is_active boolean DEFAULT true,
-  last_tested_at timestamptz,
-  test_result jsonb,
-  created_at timestamptz DEFAULT now(),
-  updated_at timestamptz DEFAULT now(),
-  UNIQUE(tenant_id, integration_key)
-);
-
--- إحصائيات الاستخدام
-CREATE TABLE public.tenant_usage_stats (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  tenant_id uuid NOT NULL REFERENCES tenants(id),
-  period_start date NOT NULL,
-  period_end date NOT NULL,
-  users_count int DEFAULT 0,
-  items_count int DEFAULT 0,
-  notifications_sent int DEFAULT 0,
-  ai_calls int DEFAULT 0,
-  storage_used_mb numeric DEFAULT 0,
-  created_at timestamptz DEFAULT now()
-);
-
--- دعوات المستخدمين
-CREATE TABLE public.user_invitations (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  tenant_id uuid NOT NULL REFERENCES tenants(id),
-  email text NOT NULL,
-  role text NOT NULL DEFAULT 'employee',
-  token text UNIQUE NOT NULL,
-  invited_by uuid NOT NULL,
-  expires_at timestamptz DEFAULT (now() + interval '7 days'),
-  accepted_at timestamptz,
-  created_at timestamptz DEFAULT now()
-);
+```
+┌─────────────────────────────────────────────┐
+│           PostgreSQL Database               │
+├──────────────┬──────────────┬───────────────┤
+│   Tenant A   │   Tenant B   │   Tenant C    │
+│   (JPF)      │   (HOTEL)    │   (Admin)     │
+│              │              │               │
+│ • 50 users   │ • 30 users   │ • 1 system    │
+│ • 200 items  │ • 150 items  │ • N/A         │
+│ • 100 logs   │ • 80 logs    │ • All logs    │
+└──────────────┴──────────────┴───────────────┘
+    ↓              ↓               ↓
+   RLS            RLS            RLS
+ (Rules)         (Rules)         (Rules)
 ```
 
-### الجداول المعزولة بـ tenant_id
+### Data Isolation Strategy
 
-| الجدول | الوصف |
-|--------|-------|
-| `profiles` | ملفات المستخدمين |
-| `items` | العناصر/المعاملات |
-| `departments` | الأقسام |
-| `categories` | الفئات |
-| `recipients` | المستلمين |
-| `item_recipients` | ربط العناصر بالمستلمين |
-| `reminder_rules` | قواعد التذكير |
-| `message_templates` | قوالب الرسائل |
-| `notification_log` | سجل الإشعارات |
-| `automation_runs` | سجل تشغيل الأتمتة |
-| `kpi_templates` | قوالب تقييم الأداء |
-| `evaluation_cycles` | دورات التقييم |
-| `evaluations` | التقييمات |
-| `compliance_scores` | درجات الامتثال |
-| `compliance_reports` | تقارير الامتثال |
-| `conversation_logs` | سجل المحادثات |
-| `ai_agent_configs` | إعدادات وكلاء AI |
-| `dynamic_field_definitions` | تعريفات الحقول الديناميكية |
-| `team_members` | أعضاء الفرق |
-
----
-
-## 🔐 Row Level Security (RLS)
-
-### الدوال الأساسية
+Each record includes `tenant_id` to identify its owner:
 
 ```sql
--- استرجاع tenant_id للمستخدم الحالي
-CREATE FUNCTION public.get_current_tenant_id()
-RETURNS uuid
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-DECLARE
-  v_tenant_id UUID;
-  v_user_id UUID;
-BEGIN
-  v_user_id := auth.uid();
-  
-  IF v_user_id IS NULL THEN
-    RETURN NULL;
-  END IF;
-  
-  SELECT tenant_id INTO v_tenant_id
-  FROM public.profiles
-  WHERE user_id = v_user_id;
-  
-  RETURN v_tenant_id;
-END;
-$$;
-
--- هل المستخدم في هذا الـ tenant؟
-CREATE FUNCTION public.is_user_in_tenant(_tenant_id uuid)
-RETURNS boolean
-LANGUAGE sql
-STABLE SECURITY DEFINER
-SET search_path = public
-AS $$
-  SELECT EXISTS (
-    SELECT 1 FROM public.profiles 
-    WHERE user_id = auth.uid() AND tenant_id = _tenant_id
-  )
-$$;
-
--- هل المستخدم admin في هذا الـ tenant؟
-CREATE FUNCTION public.is_tenant_admin(_tenant_id uuid)
-RETURNS boolean
-LANGUAGE sql
-STABLE SECURITY DEFINER
-SET search_path = public
-AS $$
-  SELECT EXISTS (
-    SELECT 1 FROM public.profiles p
-    JOIN public.user_roles ur ON ur.user_id = p.user_id
-    WHERE p.user_id = auth.uid() 
-      AND p.tenant_id = _tenant_id
-      AND ur.role IN ('system_admin', 'admin')
-  )
-$$;
-```
-
-### سياسات RLS النموذجية
-
-لكل جدول معزول، يتم إنشاء 4 سياسات:
-
-```sql
--- 1. SELECT: قراءة بيانات الشركة فقط
-CREATE POLICY "TableName: Tenant SELECT"
-ON public.table_name
-AS PERMISSIVE
-FOR SELECT
-TO authenticated
-USING (
-  is_system_admin(auth.uid()) OR 
-  (tenant_id = get_current_tenant_id())
-);
-
--- 2. INSERT: إضافة مع تحقق من tenant
-CREATE POLICY "TableName: Tenant INSERT"
-ON public.table_name
-AS PERMISSIVE
-FOR INSERT
-TO authenticated
-WITH CHECK (
-  is_system_admin(auth.uid()) OR 
-  ((tenant_id IS NULL) AND (get_current_tenant_id() IS NOT NULL)) OR 
-  (tenant_id = get_current_tenant_id())
-);
-
--- 3. UPDATE: تعديل بيانات الشركة فقط
-CREATE POLICY "TableName: Tenant UPDATE"
-ON public.table_name
-AS PERMISSIVE
-FOR UPDATE
-TO authenticated
-USING (is_system_admin(auth.uid()) OR (tenant_id = get_current_tenant_id()))
-WITH CHECK (is_system_admin(auth.uid()) OR (tenant_id = get_current_tenant_id()));
-
--- 4. DELETE: حذف بيانات الشركة فقط
-CREATE POLICY "TableName: Tenant DELETE"
-ON public.table_name
-AS PERMISSIVE
-FOR DELETE
-TO authenticated
-USING (is_system_admin(auth.uid()) OR (tenant_id = get_current_tenant_id()));
-```
-
-### Triggers للحماية
-
-```sql
--- منع تغيير tenant_id بعد الإنشاء
-CREATE FUNCTION public.prevent_tenant_id_change()
-RETURNS trigger
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-BEGIN
-  IF OLD.tenant_id IS DISTINCT FROM NEW.tenant_id THEN
-    RAISE EXCEPTION 'Cannot change tenant_id after creation';
-  END IF;
-  RETURN NEW;
-END;
-$$;
-
--- تعيين tenant_id تلقائياً + منع التزوير
-CREATE FUNCTION public.enforce_tenant_on_insert()
-RETURNS trigger
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-DECLARE
-  v_current_tenant_id UUID;
-BEGIN
-  v_current_tenant_id := get_current_tenant_id();
-  
-  -- رفض إذا حاول إدخال tenant مختلف
-  IF NEW.tenant_id IS NOT NULL AND NEW.tenant_id != v_current_tenant_id THEN
-    IF NOT is_system_admin(auth.uid()) THEN
-      RAISE EXCEPTION 'Cannot insert records for other tenants';
-    END IF;
-  END IF;
-  
-  -- تعيين تلقائي
-  IF NEW.tenant_id IS NULL THEN
-    NEW.tenant_id := v_current_tenant_id;
-  END IF;
-  
-  RETURN NEW;
-END;
-$$;
-
--- تطبيق Trigger على الجداول
-CREATE TRIGGER enforce_tenant_items_insert
-  BEFORE INSERT ON public.items
-  FOR EACH ROW EXECUTE FUNCTION enforce_tenant_on_insert();
-
-CREATE TRIGGER prevent_tenant_change_items
-  BEFORE UPDATE ON public.items
-  FOR EACH ROW EXECUTE FUNCTION prevent_tenant_id_change();
+-- Example: users are isolated by tenant_id
+SELECT * FROM profiles 
+WHERE tenant_id = auth.tenant_id()  -- Only current tenant's users
 ```
 
 ---
 
-## 👥 إدارة المستخدمين
+## 🔐 Row-Level Security (RLS)
 
-### تدفق الدعوات
+### How RLS Works
 
-```
-1. Admin في شركة A يُرسل دعوة لـ user@example.com
-   ↓
-2. إنشاء سجل في user_invitations مع tenant_id = شركة A
-   ↓
-3. المستخدم يستلم رابط الدعوة عبر البريد
-   ↓
-4. المستخدم يفتح الرابط ويُنشئ حسابه
-   ↓
-5. يتم ربط profiles.tenant_id = شركة A تلقائياً
-```
+1. **Every query is automatically filtered** by the current tenant
+2. **Policies prevent cross-tenant access** at the database level
+3. **Frontend cannot bypass** database-level security
 
-### RLS للدعوات
+### RLS Policy Example
 
 ```sql
--- Admin يدير دعوات شركته فقط
-CREATE POLICY "Invitations: Tenant admin can manage"
-ON public.user_invitations
-AS PERMISSIVE
+-- Policy on 'profiles' table
+CREATE POLICY "Tenant Isolation"
+ON profiles
 FOR ALL
-TO authenticated
 USING (
-  is_system_admin(auth.uid()) OR 
-  (is_tenant_admin(tenant_id) AND tenant_id = get_current_tenant_id())
+  tenant_id = get_current_tenant_id()
+)
+WITH CHECK (
+  tenant_id = get_current_tenant_id()
 );
+```
 
--- عرض الدعوة للمدعو عبر JWT email
-CREATE POLICY "Invitations: View by token access"
-ON public.user_invitations
-AS PERMISSIVE
-FOR SELECT
-TO authenticated
-USING (
-  is_tenant_admin(tenant_id) OR 
-  is_system_admin(auth.uid()) OR 
-  (
-    (email = (auth.jwt() ->> 'email')) AND 
-    (accepted_at IS NULL) AND 
-    (expires_at > now())
-  )
+### Breakdown
+
+| Component | Meaning |
+|-----------|----------|
+| `USING` | For SELECT/DELETE - only return rows where condition is true |
+| `WITH CHECK` | For INSERT/UPDATE - only allow if condition is true |
+| `get_current_tenant_id()` | Helper function that returns authenticated user's tenant |
+
+---
+
+## 👥 User-to-Tenant Association
+
+### How Users Connect to Tenants
+
+```sql
+-- profiles table structure
+CREATE TABLE profiles (
+  id UUID PRIMARY KEY,
+  email TEXT,
+  tenant_id UUID NOT NULL REFERENCES tenants(id),  -- ← Links to tenant
+  role VARCHAR,
+  created_at TIMESTAMP,
+  CONSTRAINT one_tenant_per_user UNIQUE(email, tenant_id)
 );
+```
+
+### User Types
+
+| User Type | Tenant ID | Access |
+|-----------|-----------|--------|
+| **System Admin** | `NULL` | All tenants (via TenantContext switcher) |
+| **Tenant Admin** | `tenant-uuid` | Only their tenant |
+| **Regular User** | `tenant-uuid` | Only their tenant |
+
+---
+
+## 🔑 Helper Functions
+
+### 1. Get Current Tenant ID
+
+```sql
+CREATE FUNCTION get_current_tenant_id() 
+RETURNS UUID AS $$
+  SELECT 
+    CASE
+      WHEN auth.jwt() ->> 'app_metadata'->>'tenant_id' != 'null'
+      THEN (auth.jwt() ->> 'app_metadata'->>'tenant_id')::UUID
+      ELSE NULL
+    END
+$$ LANGUAGE SQL STABLE;
+```
+
+**What it does:**
+- Reads tenant_id from JWT (stored during login)
+- Returns NULL for system admins
+- Returns tenant-uuid for regular users
+
+### 2. Check if System Admin
+
+```sql
+CREATE FUNCTION is_system_admin() 
+RETURNS BOOLEAN AS $$
+  SELECT (auth.jwt() ->> 'app_metadata'->>'role' = 'system_admin')
+$$ LANGUAGE SQL STABLE;
+```
+
+### 3. Check Feature Enabled
+
+```sql
+CREATE FUNCTION is_feature_enabled(p_feature TEXT)
+RETURNS BOOLEAN AS $$
+  SELECT enabled FROM feature_toggles
+  WHERE tenant_id = get_current_tenant_id()
+    AND feature_key = p_feature
+$$ LANGUAGE SQL STABLE;
 ```
 
 ---
 
-## ⚙️ التكاملات لكل شركة
+## 🔄 Login Flow
 
-### هيكل الإعدادات
+### Step-by-Step
 
-```typescript
-interface TenantIntegrationConfig {
-  // Telegram
-  bot_token?: string;
-  bot_username?: string;
-  
-  // WhatsApp
-  api_base_url?: string;
-  apikey?: string;
-  instance_name?: string;
-  
-  // n8n
-  webhook_url?: string;
-  n8n_api_key?: string;
-  
-  // AI
-  provider?: string;
-  model?: string;
-  ai_api_key?: string;
-}
+```mermaid
+graph TD
+  A[User Enters Company Code + Email] --> B{Lookup company}
+  B -->|Found| C[Load company data]
+  B -->|Not found| D[Show error]
+  C --> E{Verify email belongs to company}
+  E -->|Yes| F[Sign in with Supabase]
+  E -->|No| G[Show error]
+  F --> H[JWT issued with tenant_id]
+  H --> I[RLS policies auto-apply]
+  I --> J[User sees only their tenant's data]
 ```
 
-### مثال الاستخدام في Edge Function
+### JWT Payload Example
 
-```typescript
-async function getTenantIntegration(tenantId: string, key: string) {
-  const { data } = await supabase
-    .from('tenant_integrations')
-    .select('config, is_active')
-    .eq('tenant_id', tenantId)
-    .eq('integration_key', key)
-    .single();
-  
-  if (!data?.is_active) return null;
-  return data.config;
-}
-
-// استخدام Telegram config الخاص بالشركة
-const telegramConfig = await getTenantIntegration(tenantId, 'telegram');
-if (telegramConfig?.bot_token) {
-  await sendTelegramMessage(telegramConfig.bot_token, chatId, message);
+```json
+{
+  "sub": "user-uuid",
+  "email": "user@company.com",
+  "app_metadata": {
+    "provider": "email",
+    "tenant_id": "company-uuid",
+    "role": "admin",
+    "company_name": "JPF",
+    "company_code": "JPF"
+  }
 }
 ```
 
 ---
 
-## 📊 خطط الاشتراك
+## 📊 Tables Protected by RLS
+
+### Core HR Tables
+
+```sql
+-- All these tables enforce tenant isolation
+ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE items ENABLE ROW LEVEL SECURITY;
+ALTER TABLE evaluations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE departments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE reminder_rules ENABLE ROW LEVEL SECURITY;
+```
+
+### Policy Pattern
+
+All follow the same pattern:
+
+```sql
+CREATE POLICY "tenant_isolation_[table_name]"
+ON [table_name]
+FOR ALL
+USING (tenant_id = get_current_tenant_id())
+WITH CHECK (tenant_id = get_current_tenant_id());
+```
+
+---
+
+## 🛡️ Preventing Cross-Tenant Access
+
+### Database-Level Protection
+
+```sql
+-- Trigger: Prevent tenant_id modification
+CREATE TRIGGER prevent_tenant_id_change
+BEFORE UPDATE ON profiles
+FOR EACH ROW
+WHEN (OLD.tenant_id IS DISTINCT FROM NEW.tenant_id)
+EXECUTE FUNCTION raise_immutable_error();
+```
+
+### Frontend Check (Defense in Depth)
 
 ```typescript
-const SUBSCRIPTION_PLANS = {
-  basic: {
-    name: 'أساسي',
-    max_users: 10,
-    max_items: 500,
-    features: ['إدارة العناصر', 'تذكيرات البريد'],
-  },
-  professional: {
-    name: 'احترافي',
-    max_users: 50,
-    max_items: 2000,
-    features: ['كل مميزات الأساسي', 'WhatsApp', 'Telegram', 'تقارير'],
-  },
-  enterprise: {
-    name: 'مؤسسات',
-    max_users: -1, // unlimited
-    max_items: -1, // unlimited
-    features: ['كل المميزات', 'دعم مخصص', 'API كامل', 'تخصيص العلامة التجارية'],
-  },
+// Hook: Auto-filter by tenant
+export const useTenantQuery = () => {
+  const { tenant } = useContext(TenantContext);
+  
+  return async (query) => {
+    // Add tenant filter to every query
+    return query.eq('tenant_id', tenant.id);
+  };
 };
 ```
 
 ---
 
-## 🔄 تدفق تسجيل الدخول
+## 🔑 Admin Features
 
+### Super Admin Mode
+
+Super admins (System Admin role) can:
+
+1. **View All Tenants** - TenantSwitcher component
+2. **Create New Tenants** - `/tenant-management`
+3. **Manage Users Across Tenants** - Switch context
+4. **View System-Wide Analytics**
+5. **Configure Feature Flags**
+
+### Code Access
+
+```typescript
+// Check if super admin
+if (userRole === 'system_admin') {
+  // Show tenant switcher
+  <TenantSwitcher />
+  // Show all tenants
+  const allTenants = await supabase.from('tenants').select('*');
+}
 ```
-1. المستخدم يُدخل بيانات الدخول
-   ↓
-2. Supabase Auth يتحقق من الهوية
-   ↓
-3. النظام يقرأ profiles.tenant_id
-   ↓
-4. [إذا tenant_id موجود] → دخول مباشر للشركة
-   [إذا system_admin] → عرض قائمة الشركات للاختيار
-   [إذا لا tenant] → رسالة خطأ / انتظار دعوة
+
+---
+
+## 🚨 Security Checklist
+
+- ✅ RLS enabled on all sensitive tables
+- ✅ `WITH CHECK` policies prevent unauthorized INSERT/UPDATE
+- ✅ `tenant_id` immutable after creation (via trigger)
+- ✅ JWT includes tenant_id for every request
+- ✅ Helper functions validate tenant context
+- ✅ Feature toggles respect tenant isolation
+- ✅ Audit log includes tenant_id for all operations
+- ✅ Storage buckets use tenant-based paths
+- ✅ Edge Functions validate tenant context
+- ✅ Notification system filters by tenant
+
+---
+
+## 🐛 Troubleshooting
+
+### Problem: User sees data from another tenant
+
+**Cause:** RLS policy not enabled on table
+
+**Solution:**
+```sql
+ALTER TABLE [table_name] ENABLE ROW LEVEL SECURITY;
+```
+
+### Problem: Query returns empty when it shouldn't
+
+**Cause:** `get_current_tenant_id()` returns NULL
+
+**Solution:** Verify JWT includes `app_metadata.tenant_id`
+
+### Problem: Super admin cannot access tenant data
+
+**Cause:** Policy blocks NULL tenant_id
+
+**Solution:** Add bypass for system admins
+```sql
+CREATE POLICY "admin_bypass"
+ON profiles
+FOR ALL
+USING (
+  tenant_id = get_current_tenant_id() 
+  OR is_system_admin()
+);
 ```
 
 ---
 
-## ✅ قائمة التحقق للتطوير
+## 📚 Related Documentation
 
-عند إضافة جدول جديد:
-
-- [ ] إضافة عمود `tenant_id uuid REFERENCES tenants(id)`
-- [ ] إضافة سياسة `SELECT` مع `get_current_tenant_id()`
-- [ ] إضافة سياسة `INSERT` مع `WITH CHECK`
-- [ ] إضافة سياسة `UPDATE` مع `USING` و `WITH CHECK`
-- [ ] إضافة سياسة `DELETE` مع `USING`
-- [ ] إضافة trigger `enforce_tenant_on_insert`
-- [ ] إضافة trigger `prevent_tenant_id_change`
-- [ ] تحديث الـ Hooks في Frontend
+- [README.md](../README.md) - Main project documentation
+- [INTEGRATIONS.md](../INTEGRATIONS.md) - Integration guide
+- [API.md](./API.md) - API reference
 
 ---
 
-## 🛡️ أخطاء شائعة وحلولها
-
-### 1. لا أستطيع رؤية البيانات
-**السبب**: المستخدم غير مرتبط بـ tenant
-**الحل**: تحقق من `profiles.tenant_id`
-
-### 2. خطأ عند الإضافة
-**السبب**: محاولة إضافة لـ tenant مختلف
-**الحل**: لا تُرسل `tenant_id` يدوياً، الـ trigger يعيّنه تلقائياً
-
-### 3. System Admin لا يرى كل البيانات
-**السبب**: سياسة RLS لا تتحقق من `is_system_admin`
-**الحل**: تأكد من وجود `is_system_admin(auth.uid())` في كل سياسة
-
----
-
-## 📞 الدعم
-
-للمساعدة التقنية، راجع:
-- [README.md](../README.md)
-- [INTEGRATIONS.md](../INTEGRATIONS.md)
+**Last Updated:** January 29, 2026  
+**Version:** 2.0.0  
+**Maintained by:** Abdulrhman Bashniny
