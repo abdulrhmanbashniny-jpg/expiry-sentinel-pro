@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './AuthContext';
 import { Tenant } from '@/types/tenant';
@@ -10,6 +10,8 @@ interface TenantContextType {
   isLoading: boolean;
   switchTenant: (tenantId: string | null) => void;
   refreshTenants: () => Promise<void>;
+  // New helper for queries
+  getTenantFilter: () => { tenant_id?: string };
 }
 
 const TenantContext = createContext<TenantContextType | undefined>(undefined);
@@ -28,9 +30,15 @@ export const TenantProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   const [allTenants, setAllTenants] = useState<Tenant[]>([]);
   const [isPlatformAdmin, setIsPlatformAdmin] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [selectedTenantId, setSelectedTenantId] = useState<string | null>(null);
+  const [selectedTenantId, setSelectedTenantId] = useState<string | null>(() => {
+    // Restore from localStorage for platform admins
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('selected_tenant_id');
+    }
+    return null;
+  });
 
-  const fetchTenantData = async () => {
+  const fetchTenantData = useCallback(async () => {
     if (!user) {
       setCurrentTenant(null);
       setAllTenants([]);
@@ -57,6 +65,7 @@ export const TenantProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         const { data: tenants } = await supabase
           .from('tenants')
           .select('*')
+          .eq('is_active', true)
           .order('name');
 
         setAllTenants((tenants as Tenant[]) || []);
@@ -88,20 +97,38 @@ export const TenantProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [user, isSystemAdmin, selectedTenantId]);
 
   useEffect(() => {
     fetchTenantData();
-  }, [user, isSystemAdmin, selectedTenantId]);
+  }, [fetchTenantData]);
 
-  const switchTenant = (tenantId: string | null) => {
+  const switchTenant = useCallback((tenantId: string | null) => {
     if (!isPlatformAdmin) return;
     setSelectedTenantId(tenantId);
-  };
+    // Persist selection
+    if (tenantId) {
+      localStorage.setItem('selected_tenant_id', tenantId);
+    } else {
+      localStorage.removeItem('selected_tenant_id');
+    }
+  }, [isPlatformAdmin]);
 
   const refreshTenants = async () => {
     await fetchTenantData();
   };
+
+  // Helper function for building tenant-filtered queries
+  const getTenantFilter = useCallback(() => {
+    if (isPlatformAdmin && !currentTenant) {
+      // Platform admin viewing all - no filter
+      return {};
+    }
+    if (currentTenant?.id) {
+      return { tenant_id: currentTenant.id };
+    }
+    return {};
+  }, [isPlatformAdmin, currentTenant]);
 
   return (
     <TenantContext.Provider
@@ -112,6 +139,7 @@ export const TenantProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         isLoading,
         switchTenant,
         refreshTenants,
+        getTenantFilter,
       }}
     >
       {children}

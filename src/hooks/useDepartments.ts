@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useTenant } from '@/contexts/TenantContext';
 
 export interface Department {
   id: string;
@@ -10,21 +11,34 @@ export interface Department {
   is_active: boolean;
   created_at: string;
   updated_at: string;
+  tenant_id?: string | null;
 }
 
 export const useDepartments = () => {
+  const { currentTenant, isPlatformAdmin } = useTenant();
+
   const departmentsQuery = useQuery({
-    queryKey: ['departments'],
+    queryKey: ['departments', currentTenant?.id],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('departments')
         .select('*')
         .eq('is_active', true)
         .order('name', { ascending: true });
 
+      // Apply tenant filter
+      if (currentTenant?.id) {
+        query = query.eq('tenant_id', currentTenant.id);
+      } else if (!isPlatformAdmin) {
+        return [];
+      }
+
+      const { data, error } = await query;
+
       if (error) throw error;
       return data as Department[];
     },
+    enabled: !!currentTenant || isPlatformAdmin,
   });
 
   return {

@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useTenant } from '@/contexts/TenantContext';
 import { TeamMember, Profile, AppRole } from '@/types/database';
 
 interface UserWithRole {
@@ -20,15 +21,27 @@ interface DepartmentScope {
 export function useTeamManagement() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { currentTenant, isPlatformAdmin } = useTenant();
 
-  // Get all users with their roles
+  // Get all users with their roles - with tenant filtering
   const usersQuery = useQuery({
-    queryKey: ['users-with-roles'],
+    queryKey: ['users-with-roles', currentTenant?.id],
     queryFn: async () => {
-      const { data: profiles, error: profilesError } = await supabase
+      let profilesQuery = supabase
         .from('profiles')
         .select('*')
+        .neq('account_status', 'deleted')
         .order('full_name');
+      
+      // Apply tenant filter for non-platform admins or when a tenant is selected
+      if (currentTenant?.id) {
+        profilesQuery = profilesQuery.eq('tenant_id', currentTenant.id);
+      } else if (!isPlatformAdmin) {
+        // Regular users without tenant context shouldn't see any data
+        return [];
+      }
+      
+      const { data: profiles, error: profilesError } = await profilesQuery;
       
       if (profilesError) throw profilesError;
 
@@ -43,6 +56,7 @@ export function useTeamManagement() {
         role: roles.find(r => r.user_id === profile.user_id)?.role as AppRole || null,
       })) as UserWithRole[];
     },
+    enabled: !!currentTenant || isPlatformAdmin,
   });
 
   // Get all team members
