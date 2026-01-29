@@ -1390,8 +1390,10 @@ export type Database = {
           is_read: boolean | null
           message: string
           metadata: Json | null
+          notification_type: string | null
           priority: string | null
           read_at: string | null
+          source_channel: string | null
           tenant_id: string | null
           title: string
           user_id: string
@@ -1405,8 +1407,10 @@ export type Database = {
           is_read?: boolean | null
           message: string
           metadata?: Json | null
+          notification_type?: string | null
           priority?: string | null
           read_at?: string | null
+          source_channel?: string | null
           tenant_id?: string | null
           title: string
           user_id: string
@@ -1420,8 +1424,10 @@ export type Database = {
           is_read?: boolean | null
           message?: string
           metadata?: Json | null
+          notification_type?: string | null
           priority?: string | null
           read_at?: string | null
+          source_channel?: string | null
           tenant_id?: string | null
           title?: string
           user_id?: string
@@ -2744,6 +2750,56 @@ export type Database = {
             foreignKeyName: "tenant_integrations_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tenant_notification_settings: {
+        Row: {
+          created_at: string | null
+          email_enabled: boolean | null
+          email_from_address: string | null
+          email_from_name: string | null
+          email_provider: string | null
+          id: string
+          in_app_enabled: boolean | null
+          telegram_enabled: boolean | null
+          tenant_id: string
+          updated_at: string | null
+          whatsapp_enabled: boolean | null
+        }
+        Insert: {
+          created_at?: string | null
+          email_enabled?: boolean | null
+          email_from_address?: string | null
+          email_from_name?: string | null
+          email_provider?: string | null
+          id?: string
+          in_app_enabled?: boolean | null
+          telegram_enabled?: boolean | null
+          tenant_id: string
+          updated_at?: string | null
+          whatsapp_enabled?: boolean | null
+        }
+        Update: {
+          created_at?: string | null
+          email_enabled?: boolean | null
+          email_from_address?: string | null
+          email_from_name?: string | null
+          email_provider?: string | null
+          id?: string
+          in_app_enabled?: boolean | null
+          telegram_enabled?: boolean | null
+          tenant_id?: string
+          updated_at?: string | null
+          whatsapp_enabled?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_notification_settings_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
             referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
