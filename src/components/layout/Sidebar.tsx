@@ -52,7 +52,7 @@ interface NavItem {
 const navItems: NavItem[] = [
   { to: '/', icon: LayoutDashboard, label: 'لوحة التحكم' },
   { to: '/items', icon: FileText, label: 'العناصر' },
-  { to: '/recipients', icon: Users, label: 'المستلمون', minRole: 'supervisor' },
+  // Recipients moved to /user-management
   { to: '/categories', icon: FolderOpen, label: 'الفئات', minRole: 'admin' },
   { to: '/departments', icon: Building2, label: 'الأقسام', minRole: 'admin' },
   { to: '/reminders', icon: Bell, label: 'مركز التذكيرات', minRole: 'supervisor' },
