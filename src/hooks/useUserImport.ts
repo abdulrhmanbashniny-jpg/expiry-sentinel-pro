@@ -109,9 +109,20 @@ export const useUserImport = () => {
           });
           if (error) throw error;
 
+          // Backend may return a handled failure (e.g., email already exists)
+          if (!data?.success) {
+            results.errors.push({
+              row: i + 1,
+              error: data?.error || 'فشل في إنشاء المستخدم',
+              data: userData,
+            });
+            results.failed++;
+            continue;
+          }
+
           results.success++;
           results.imported.push({
-            email: userData.email || `${userData.employee_number}@temp.local`,
+            email: (data as any)?.email || userData.email || `${userData.employee_number}@temp.local`,
             password: userData.password,
             fullname: userData.fullname,
             phone: userData.phone,

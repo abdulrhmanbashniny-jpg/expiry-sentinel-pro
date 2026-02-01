@@ -88,6 +88,20 @@ serve(async (req) => {
 
     if (authError) {
       console.error('Auth error:', authError);
+
+      // Make duplicates a handled/expected outcome (idempotent import)
+      // so the frontend can show a friendly per-row error without treating it as a transport failure.
+      if ((authError as any)?.code === 'email_exists') {
+        return new Response(
+          JSON.stringify({
+            success: false,
+            code: 'email_exists',
+            error: 'البريد الإلكتروني موجود مسبقاً',
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
       return new Response(
         JSON.stringify({ error: authError.message }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

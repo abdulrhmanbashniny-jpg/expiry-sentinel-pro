@@ -26,6 +26,13 @@ import { ROLE_LABELS, AppRole } from '@/types/database';
 import { InviteUserDialog } from '@/components/users/InviteUserDialog';
 import TestTelegramDialog from '@/components/TestTelegramDialog';
 
+// Remove invisible Unicode characters (RTL marks, zero-width chars, etc.) from emails
+function sanitizeEmail(email: string): string {
+  return (email || '')
+    .replace(/[\u200B-\u200D\u202A-\u202E\u2060-\u206F\uFEFF]/g, '')
+    .trim();
+}
+
 export default function UserManagement() {
   const { isSystemAdmin, isAdmin } = useAuth();
   const { currentTenant } = useTenant();
@@ -303,7 +310,9 @@ export default function UserManagement() {
 
   // Add user handler
   const handleAddUser = async () => {
-    if (!newUserForm.full_name || !newUserForm.email) {
+    const cleanEmail = sanitizeEmail(newUserForm.email);
+
+    if (!newUserForm.full_name || !cleanEmail) {
       toast({ title: 'خطأ', description: 'الاسم والبريد الإلكتروني مطلوبان', variant: 'destructive' });
       return;
     }
@@ -314,7 +323,7 @@ export default function UserManagement() {
       const { data: existingEmail } = await supabase
         .from('profiles')
         .select('id')
-        .eq('email', newUserForm.email)
+        .ilike('email', cleanEmail)
         .maybeSingle();
       
       if (existingEmail) {
@@ -327,7 +336,7 @@ export default function UserManagement() {
       const { data, error } = await supabase.functions.invoke('import-user', {
         body: {
           fullname: newUserForm.full_name,
-          email: newUserForm.email,
+          email: cleanEmail,
           phone: newUserForm.phone,
           employee_number: newUserForm.employee_number,
           role: newUserForm.role,
@@ -337,6 +346,16 @@ export default function UserManagement() {
       });
 
       if (error) throw error;
+
+      // Backend may return a handled failure (e.g., email already exists)
+      if (!data?.success) {
+        toast({
+          title: 'تعذر إضافة المستخدم',
+          description: data?.error || 'حدث خطأ غير معروف',
+          variant: 'destructive',
+        });
+        return;
+      }
 
       // Link to department if selected
       if (newUserForm.department_id && data?.user_id) {
