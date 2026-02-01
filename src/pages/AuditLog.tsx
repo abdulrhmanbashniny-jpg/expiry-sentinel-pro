@@ -125,12 +125,12 @@ export default function AuditLog() {
             <div className="space-y-2">
               <Label>نوع الكيان</Label>
               <Select
-                value={filters.entityType}
-                onValueChange={v => setFilters({ ...filters, entityType: v })}
+                value={filters.entityType || 'all'}
+                onValueChange={v => setFilters({ ...filters, entityType: v === 'all' ? '' : v })}
               >
                 <SelectTrigger><SelectValue placeholder="الكل" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">الكل</SelectItem>
+                  <SelectItem value="all">الكل</SelectItem>
                   {Object.entries(ENTITY_TYPES).map(([value, label]) => (
                     <SelectItem key={value} value={value}>{label}</SelectItem>
                   ))}
@@ -140,12 +140,12 @@ export default function AuditLog() {
             <div className="space-y-2">
               <Label>نوع العملية</Label>
               <Select
-                value={filters.action}
-                onValueChange={v => setFilters({ ...filters, action: v })}
+                value={filters.action || 'all'}
+                onValueChange={v => setFilters({ ...filters, action: v === 'all' ? '' : v })}
               >
                 <SelectTrigger><SelectValue placeholder="الكل" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">الكل</SelectItem>
+                  <SelectItem value="all">الكل</SelectItem>
                   {Object.entries(AUDIT_ACTIONS).map(([value, label]) => (
                     <SelectItem key={value} value={value}>{label}</SelectItem>
                   ))}
