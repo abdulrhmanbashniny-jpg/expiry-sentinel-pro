@@ -22,9 +22,19 @@ serve(async (req) => {
       },
     });
 
+    const rawBody = await req.json();
+    
+    // Sanitize email - remove invisible Unicode characters (RTL marks, zero-width chars, etc.)
+    const sanitizeEmail = (email: string | undefined): string | undefined => {
+      if (!email) return undefined;
+      // Remove invisible Unicode characters and trim whitespace
+      return email
+        .replace(/[\u200B-\u200D\u202A-\u202E\u2060-\u206F\uFEFF]/g, '')
+        .trim();
+    };
+    
     const { 
       fullname, 
-      email, 
       employee_number, 
       role, 
       department, 
@@ -35,7 +45,9 @@ serve(async (req) => {
       direct_manager,
       hire_date,
       must_change_password = true 
-    } = await req.json();
+    } = rawBody;
+    
+    const email = sanitizeEmail(rawBody.email);
 
     console.log(`Importing user: ${fullname}, employee_number: ${employee_number}, email: ${email}`);
 
