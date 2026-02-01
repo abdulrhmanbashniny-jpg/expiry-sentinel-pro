@@ -34,6 +34,14 @@ function generateRandomPassword(): string {
   return Math.floor(10000000 + Math.random() * 90000000).toString();
 }
 
+// تنظيف البريد الإلكتروني من أحرف Unicode المخفية
+function sanitizeEmail(email: string | undefined): string | undefined {
+  if (!email) return undefined;
+  return email
+    .replace(/[\u200B-\u200D\u202A-\u202E\u2060-\u206F\uFEFF]/g, '')
+    .trim();
+}
+
 export const useUserImport = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -65,19 +73,22 @@ export const useUserImport = () => {
       for (let i = 0; i < users.length; i++) {
         const userData = users[i];
         try {
-          // التحقق من التكرار
-          if (userData.email) {
-            const { data: existingEmail } = await supabase
-              .from('profiles')
-              .select('id')
-              .eq('email', userData.email)
-              .maybeSingle();
-            if (existingEmail) {
-              results.errors.push({ row: i + 1, error: 'البريد الإلكتروني موجود مسبقاً', data: userData });
-              results.failed++;
-              continue;
-            }
+        // تنظيف البريد الإلكتروني
+        const cleanEmail = sanitizeEmail(userData.email);
+        
+        // التحقق من التكرار
+        if (cleanEmail) {
+          const { data: existingEmail } = await supabase
+            .from('profiles')
+            .select('id')
+            .eq('email', cleanEmail)
+            .maybeSingle();
+          if (existingEmail) {
+            results.errors.push({ row: i + 1, error: 'البريد الإلكتروني موجود مسبقاً', data: userData });
+            results.failed++;
+            continue;
           }
+        }
 
           if (userData.employee_number) {
             const { data: existingEmp } = await supabase
@@ -92,9 +103,9 @@ export const useUserImport = () => {
             }
           }
 
-          // إنشاء المستخدم
+          // إنشاء المستخدم مع الإيميل النظيف
           const { data, error } = await supabase.functions.invoke('import-user', {
-            body: { ...userData, must_change_password: true },
+            body: { ...userData, email: cleanEmail, must_change_password: true },
           });
           if (error) throw error;
 
