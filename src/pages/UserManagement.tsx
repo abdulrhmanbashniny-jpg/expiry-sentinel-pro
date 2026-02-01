@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTenant } from '@/contexts/TenantContext';
 import { useTeamManagement } from '@/hooks/useTeamManagement';
+import { useRecipients } from '@/hooks/useRecipients';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,21 +15,25 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   Users, Search, Edit, MessageCircle, Send, Loader2,
-  UserX, Trash2, AlertTriangle, UserPlus, CheckSquare, Mail
+  UserX, Trash2, AlertTriangle, UserPlus, CheckSquare, Mail, Check, X, Plus, UserCog
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { ROLE_LABELS, AppRole } from '@/types/database';
 import { InviteUserDialog } from '@/components/users/InviteUserDialog';
+import TestTelegramDialog from '@/components/TestTelegramDialog';
 
 export default function UserManagement() {
   const { isSystemAdmin, isAdmin } = useAuth();
   const { currentTenant } = useTenant();
   const { users, departments, isLoading, refetch, addUserToDepartment } = useTeamManagement();
+  const { recipients, isLoading: recipientsLoading, createRecipient, updateRecipient, deleteRecipient } = useRecipients();
   const { toast } = useToast();
   
+  const [activeTab, setActiveTab] = useState('users');
   const [search, setSearch] = useState('');
   const [editingUser, setEditingUser] = useState<any>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -70,6 +75,12 @@ export default function UserManagement() {
 
   // Invite user dialog
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
+
+  // Recipients state
+  const [isAddingRecipient, setIsAddingRecipient] = useState(false);
+  const [editingRecipientId, setEditingRecipientId] = useState<string | null>(null);
+  const [newRecipient, setNewRecipient] = useState({ name: '', whatsapp_number: '', telegram_id: '' });
+  const [editRecipientData, setEditRecipientData] = useState({ name: '', whatsapp_number: '', telegram_id: '' });
 
   const canEdit = isSystemAdmin || isAdmin;
 
@@ -365,225 +376,447 @@ export default function UserManagement() {
     return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">نشط</Badge>;
   };
 
+  // Recipient handlers
+  const handleAddRecipient = async () => {
+    if (!newRecipient.name || !newRecipient.whatsapp_number) return;
+    await createRecipient.mutateAsync({
+      name: newRecipient.name,
+      whatsapp_number: newRecipient.whatsapp_number,
+      telegram_id: newRecipient.telegram_id || null,
+    });
+    setNewRecipient({ name: '', whatsapp_number: '', telegram_id: '' });
+    setIsAddingRecipient(false);
+  };
+
+  const handleEditRecipient = async (id: string) => {
+    await updateRecipient.mutateAsync({ 
+      id, 
+      name: editRecipientData.name,
+      whatsapp_number: editRecipientData.whatsapp_number,
+      telegram_id: editRecipientData.telegram_id || null,
+    });
+    setEditingRecipientId(null);
+  };
+
+  const filteredRecipients = recipients.filter(r => {
+    const searchLower = search.toLowerCase();
+    return (
+      r.name.toLowerCase().includes(searchLower) ||
+      r.whatsapp_number?.includes(search) ||
+      r.telegram_id?.includes(search)
+    );
+  });
+
   return (
     <div className="space-y-6" dir="rtl">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">إدارة المستخدمين</h1>
-          <p className="text-muted-foreground">عرض وتعديل بيانات المستخدمين وقنوات التواصل</p>
+          <h1 className="text-2xl font-bold">إدارة المستخدمين والمستلمين</h1>
+          <p className="text-muted-foreground">عرض وتعديل بيانات الموظفين والمستلمين الخارجيين</p>
         </div>
         <div className="flex gap-2">
-          {isSystemAdmin && selectedUsers.size > 0 && (
-            <Button 
-              variant="destructive" 
-              onClick={() => setBulkDeleteDialogOpen(true)}
-              className="gap-1"
-            >
-              <Trash2 className="h-4 w-4" />
-              حذف المحددين ({selectedUsers.size})
-            </Button>
+          {activeTab === 'users' && (
+            <>
+              {isSystemAdmin && selectedUsers.size > 0 && (
+                <Button 
+                  variant="destructive" 
+                  onClick={() => setBulkDeleteDialogOpen(true)}
+                  className="gap-1"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  حذف المحددين ({selectedUsers.size})
+                </Button>
+              )}
+              {(isSystemAdmin || isAdmin) && currentTenant && (
+                <Button onClick={() => setInviteDialogOpen(true)} className="gap-1" variant="outline">
+                  <Mail className="h-4 w-4" />
+                  دعوة موظف
+                </Button>
+              )}
+              {isSystemAdmin && (
+                <Button onClick={() => setAddUserDialogOpen(true)} className="gap-1">
+                  <UserPlus className="h-4 w-4" />
+                  إضافة مستخدم
+                </Button>
+              )}
+            </>
           )}
-          {(isSystemAdmin || isAdmin) && currentTenant && (
-            <Button onClick={() => setInviteDialogOpen(true)} className="gap-1" variant="outline">
-              <Mail className="h-4 w-4" />
-              دعوة موظف
-            </Button>
+          {activeTab === 'recipients' && (
+            <>
+              <TestTelegramDialog />
+              <Button onClick={() => setIsAddingRecipient(true)} className="gap-2" disabled={isAddingRecipient}>
+                <Plus className="h-4 w-4" />
+                إضافة مستلم
+              </Button>
+            </>
           )}
-          {isSystemAdmin && (
-            <Button onClick={() => setAddUserDialogOpen(true)} className="gap-1">
-              <UserPlus className="h-4 w-4" />
-              إضافة مستخدم
-            </Button>
-          )}
-          <Badge variant="outline" className="gap-1">
-            <Users className="h-4 w-4" />
-            {activeUsers.length} مستخدم
-          </Badge>
         </div>
       </div>
 
-      {/* Stats */}
-      <div className="grid gap-4 md:grid-cols-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">إجمالي المستخدمين</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{activeUsers.length}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">واتساب مفعّل</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">
-              {activeUsers.filter(u => (u.profile as any).allow_whatsapp).length}
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">تيليجرام مفعّل</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-blue-600">
-              {activeUsers.filter(u => (u.profile as any).allow_telegram).length}
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">حسابات معطّلة</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-orange-600">
-              {activeUsers.filter(u => (u.profile as any).account_status === 'disabled').length}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      {/* Tabs */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="grid w-full max-w-md grid-cols-2">
+          <TabsTrigger value="users" className="gap-2">
+            <Users className="h-4 w-4" />
+            الموظفون
+            <Badge variant="secondary" className="mr-1">{activeUsers.length}</Badge>
+          </TabsTrigger>
+          <TabsTrigger value="recipients" className="gap-2">
+            <UserCog className="h-4 w-4" />
+            المستلمون الخارجيون
+            <Badge variant="secondary" className="mr-1">{recipients.length}</Badge>
+          </TabsTrigger>
+        </TabsList>
 
-      {/* Search */}
-      <Card>
-        <CardContent className="p-4">
-          <div className="relative">
-            <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder="بحث بالاسم، البريد، رقم الموظف، أو الجوال..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pr-10"
-            />
+        {/* Users Tab */}
+        <TabsContent value="users" className="space-y-4 mt-4">
+          {/* Stats */}
+          <div className="grid gap-4 md:grid-cols-4">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">إجمالي المستخدمين</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{activeUsers.length}</div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">واتساب مفعّل</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-green-600">
+                  {activeUsers.filter(u => (u.profile as any).allow_whatsapp).length}
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">تيليجرام مفعّل</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-blue-600">
+                  {activeUsers.filter(u => (u.profile as any).allow_telegram).length}
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">حسابات معطّلة</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-orange-600">
+                  {activeUsers.filter(u => (u.profile as any).account_status === 'disabled').length}
+                </div>
+              </CardContent>
+            </Card>
           </div>
-        </CardContent>
-      </Card>
 
-      {/* Users Table */}
-      <Card>
-        <CardContent className="p-0">
-          {isLoading ? (
-            <div className="flex items-center justify-center p-8">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            </div>
-          ) : filteredUsers.length === 0 ? (
-            <div className="text-center p-8 text-muted-foreground">
-              لا يوجد مستخدمون مطابقون للبحث
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  {isSystemAdmin && (
-                    <TableHead className="w-12">
-                      <Checkbox
-                        checked={selectedUsers.size === filteredUsers.length && filteredUsers.length > 0}
-                        onCheckedChange={toggleSelectAll}
-                      />
-                    </TableHead>
-                  )}
-                  <TableHead>المستخدم</TableHead>
-                  <TableHead>رقم الموظف</TableHead>
-                  <TableHead>الجوال</TableHead>
-                  <TableHead>الدور</TableHead>
-                  <TableHead>الحالة</TableHead>
-                  <TableHead>قنوات التواصل</TableHead>
-                  {canEdit && <TableHead>الإجراءات</TableHead>}
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredUsers.map((user) => {
-                  const profile = user.profile as any;
-                  const isSelected = selectedUsers.has(profile.user_id);
-                  return (
-                    <TableRow key={profile.user_id} className={isSelected ? 'bg-primary/5' : ''}>
+          {/* Search */}
+          <Card>
+            <CardContent className="p-4">
+              <div className="relative">
+                <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  placeholder="بحث بالاسم، البريد، رقم الموظف، أو الجوال..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="pr-10"
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Users Table */}
+          <Card>
+            <CardContent className="p-0">
+              {isLoading ? (
+                <div className="flex items-center justify-center p-8">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                </div>
+              ) : filteredUsers.length === 0 ? (
+                <div className="text-center p-8 text-muted-foreground">
+                  لا يوجد مستخدمون مطابقون للبحث
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
                       {isSystemAdmin && (
-                        <TableCell>
+                        <TableHead className="w-12">
                           <Checkbox
-                            checked={isSelected}
-                            onCheckedChange={() => toggleUserSelection(profile.user_id)}
+                            checked={selectedUsers.size === filteredUsers.length && filteredUsers.length > 0}
+                            onCheckedChange={toggleSelectAll}
+                          />
+                        </TableHead>
+                      )}
+                      <TableHead>المستخدم</TableHead>
+                      <TableHead>رقم الموظف</TableHead>
+                      <TableHead>الجوال</TableHead>
+                      <TableHead>الدور</TableHead>
+                      <TableHead>الحالة</TableHead>
+                      <TableHead>قنوات التواصل</TableHead>
+                      {canEdit && <TableHead>الإجراءات</TableHead>}
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredUsers.map((user) => {
+                      const profile = user.profile as any;
+                      const isSelected = selectedUsers.has(profile.user_id);
+                      return (
+                        <TableRow key={profile.user_id} className={isSelected ? 'bg-primary/5' : ''}>
+                          {isSystemAdmin && (
+                            <TableCell>
+                              <Checkbox
+                                checked={isSelected}
+                                onCheckedChange={() => toggleUserSelection(profile.user_id)}
+                              />
+                            </TableCell>
+                          )}
+                          <TableCell>
+                            <div className="flex items-center gap-3">
+                              <Avatar className="h-9 w-9">
+                                <AvatarFallback className="bg-primary/10 text-primary">
+                                  {getInitials(profile.full_name)}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div>
+                                <p className="font-medium">{profile.full_name || 'بدون اسم'}</p>
+                                <p className="text-sm text-muted-foreground" dir="ltr">{profile.email}</p>
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell>{profile.employee_number || '-'}</TableCell>
+                          <TableCell dir="ltr">{profile.phone || '-'}</TableCell>
+                          <TableCell>
+                            <Badge variant="outline">
+                              {ROLE_LABELS[user.role as keyof typeof ROLE_LABELS] || user.role}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            {getAccountStatusBadge(profile.account_status)}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex gap-2">
+                              {profile.allow_whatsapp && (
+                                <Badge className="bg-green-500/10 text-green-600 border-green-500/20">
+                                  <MessageCircle className="h-3 w-3 ml-1" />
+                                  واتساب
+                                </Badge>
+                              )}
+                              {profile.allow_telegram && (
+                                <Badge className="bg-blue-500/10 text-blue-600 border-blue-500/20">
+                                  <Send className="h-3 w-3 ml-1" />
+                                  تيليجرام
+                                </Badge>
+                              )}
+                              {!profile.allow_whatsapp && !profile.allow_telegram && (
+                                <span className="text-sm text-muted-foreground">لا يوجد</span>
+                              )}
+                            </div>
+                          </TableCell>
+                          {canEdit && (
+                            <TableCell>
+                              <div className="flex gap-1">
+                                <Button size="sm" variant="ghost" onClick={() => handleEditUser(user)} title="تعديل">
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                                <Button 
+                                  size="sm" 
+                                  variant="ghost" 
+                                  onClick={() => openDeactivateDialog(user)}
+                                  title="تعطيل الحساب"
+                                  className="text-orange-500 hover:text-orange-600 hover:bg-orange-50"
+                                >
+                                  <UserX className="h-4 w-4" />
+                                </Button>
+                                {isSystemAdmin && (
+                                  <Button 
+                                    size="sm" 
+                                    variant="ghost" 
+                                    onClick={() => openDeleteDialog(user)}
+                                    title="حذف الحساب"
+                                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                )}
+                              </div>
+                            </TableCell>
+                          )}
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Recipients Tab */}
+        <TabsContent value="recipients" className="space-y-4 mt-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <UserCog className="h-5 w-5" />
+                المستلمون الخارجيون
+              </CardTitle>
+              <CardDescription>
+                أشخاص من خارج المنظمة يستقبلون الإشعارات (مثل الجهات الحكومية أو المقاولين)
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="p-0">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>الاسم</TableHead>
+                    <TableHead>رقم الواتساب</TableHead>
+                    <TableHead>Telegram ID</TableHead>
+                    <TableHead>الحالة</TableHead>
+                    <TableHead>الإجراءات</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {isAddingRecipient && (
+                    <TableRow>
+                      <TableCell>
+                        <Input 
+                          value={newRecipient.name} 
+                          onChange={(e) => setNewRecipient({ ...newRecipient, name: e.target.value })} 
+                          placeholder="الاسم" 
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <Input 
+                          value={newRecipient.whatsapp_number} 
+                          onChange={(e) => setNewRecipient({ ...newRecipient, whatsapp_number: e.target.value })} 
+                          placeholder="+966xxxxxxxxx" 
+                          dir="ltr" 
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <Input 
+                          value={newRecipient.telegram_id} 
+                          onChange={(e) => setNewRecipient({ ...newRecipient, telegram_id: e.target.value })} 
+                          placeholder="123456789" 
+                          dir="ltr" 
+                        />
+                      </TableCell>
+                      <TableCell>-</TableCell>
+                      <TableCell>
+                        <div className="flex gap-1">
+                          <Button size="icon" variant="ghost" onClick={handleAddRecipient}>
+                            <Check className="h-4 w-4 text-green-600" />
+                          </Button>
+                          <Button size="icon" variant="ghost" onClick={() => setIsAddingRecipient(false)}>
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  )}
+                  {recipientsLoading ? (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center py-8">
+                        <Loader2 className="h-6 w-6 animate-spin mx-auto text-primary" />
+                      </TableCell>
+                    </TableRow>
+                  ) : filteredRecipients.length === 0 && !isAddingRecipient ? (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                        لا يوجد مستلمون خارجيون
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    filteredRecipients.map((r) => (
+                      <TableRow key={r.id}>
+                        <TableCell>
+                          {editingRecipientId === r.id ? (
+                            <Input 
+                              value={editRecipientData.name} 
+                              onChange={(e) => setEditRecipientData({ ...editRecipientData, name: e.target.value })} 
+                            />
+                          ) : (
+                            r.name
+                          )}
+                        </TableCell>
+                        <TableCell dir="ltr" className="text-left">
+                          {editingRecipientId === r.id ? (
+                            <Input 
+                              value={editRecipientData.whatsapp_number} 
+                              onChange={(e) => setEditRecipientData({ ...editRecipientData, whatsapp_number: e.target.value })} 
+                              dir="ltr" 
+                            />
+                          ) : (
+                            r.whatsapp_number
+                          )}
+                        </TableCell>
+                        <TableCell dir="ltr" className="text-left">
+                          {editingRecipientId === r.id ? (
+                            <Input 
+                              value={editRecipientData.telegram_id} 
+                              onChange={(e) => setEditRecipientData({ ...editRecipientData, telegram_id: e.target.value })} 
+                              dir="ltr" 
+                            />
+                          ) : (
+                            r.telegram_id || '-'
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <Switch 
+                            checked={r.is_active} 
+                            onCheckedChange={(checked) => updateRecipient.mutate({ id: r.id, is_active: checked })} 
                           />
                         </TableCell>
-                      )}
-                      <TableCell>
-                        <div className="flex items-center gap-3">
-                          <Avatar className="h-9 w-9">
-                            <AvatarFallback className="bg-primary/10 text-primary">
-                              {getInitials(profile.full_name)}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div>
-                            <p className="font-medium">{profile.full_name || 'بدون اسم'}</p>
-                            <p className="text-sm text-muted-foreground" dir="ltr">{profile.email}</p>
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>{profile.employee_number || '-'}</TableCell>
-                      <TableCell dir="ltr">{profile.phone || '-'}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline">
-                          {ROLE_LABELS[user.role as keyof typeof ROLE_LABELS] || user.role}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        {getAccountStatusBadge(profile.account_status)}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex gap-2">
-                          {profile.allow_whatsapp && (
-                            <Badge className="bg-green-500/10 text-green-600 border-green-500/20">
-                              <MessageCircle className="h-3 w-3 ml-1" />
-                              واتساب
-                            </Badge>
-                          )}
-                          {profile.allow_telegram && (
-                            <Badge className="bg-blue-500/10 text-blue-600 border-blue-500/20">
-                              <Send className="h-3 w-3 ml-1" />
-                              تيليجرام
-                            </Badge>
-                          )}
-                          {!profile.allow_whatsapp && !profile.allow_telegram && (
-                            <span className="text-sm text-muted-foreground">لا يوجد</span>
-                          )}
-                        </div>
-                      </TableCell>
-                      {canEdit && (
                         <TableCell>
                           <div className="flex gap-1">
-                            <Button size="sm" variant="ghost" onClick={() => handleEditUser(user)} title="تعديل">
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button 
-                              size="sm" 
-                              variant="ghost" 
-                              onClick={() => openDeactivateDialog(user)}
-                              title="تعطيل الحساب"
-                              className="text-orange-500 hover:text-orange-600 hover:bg-orange-50"
-                            >
-                              <UserX className="h-4 w-4" />
-                            </Button>
-                            {isSystemAdmin && (
-                              <Button 
-                                size="sm" 
-                                variant="ghost" 
-                                onClick={() => openDeleteDialog(user)}
-                                title="حذف الحساب"
-                                className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
+                            {editingRecipientId === r.id ? (
+                              <>
+                                <Button size="icon" variant="ghost" onClick={() => handleEditRecipient(r.id)}>
+                                  <Check className="h-4 w-4 text-green-600" />
+                                </Button>
+                                <Button size="icon" variant="ghost" onClick={() => setEditingRecipientId(null)}>
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              </>
+                            ) : (
+                              <>
+                                <Button 
+                                  size="icon" 
+                                  variant="ghost" 
+                                  onClick={() => { 
+                                    setEditingRecipientId(r.id); 
+                                    setEditRecipientData({ 
+                                      name: r.name, 
+                                      whatsapp_number: r.whatsapp_number, 
+                                      telegram_id: r.telegram_id || '' 
+                                    }); 
+                                  }}
+                                >
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                                <Button 
+                                  size="icon" 
+                                  variant="ghost" 
+                                  className="text-destructive" 
+                                  onClick={() => deleteRecipient.mutate(r.id)}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </>
                             )}
                           </div>
                         </TableCell>
-                      )}
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
 
       {/* Edit Dialog */}
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>

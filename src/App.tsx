@@ -14,7 +14,7 @@ import Items from "./pages/Items";
 import ItemDetails from "./pages/ItemDetails";
 import EditItem from "./pages/EditItem";
 import NewItem from "./pages/NewItem";
-import Recipients from "./pages/Recipients";
+// Recipients page removed - merged into UserManagement
 import Categories from "./pages/Categories";
 import ReminderRules from "./pages/ReminderRules";
 import ReminderDashboard from "./pages/ReminderDashboard";
@@ -90,7 +90,7 @@ const AppRoutes = () => {
         <Route path="items/new" element={<NewItem />} />
         <Route path="items/:id" element={<ItemDetails />} />
         <Route path="items/:id/edit" element={<EditItem />} />
-        <Route path="recipients" element={<Recipients />} />
+        {/* Recipients route removed - merged into /user-management */}
         <Route path="categories" element={<Categories />} />
         <Route path="reminder-rules" element={<ReminderRules />} />
         <Route path="reminders" element={<ReminderDashboard />} />
