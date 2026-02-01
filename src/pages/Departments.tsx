@@ -13,7 +13,7 @@ import { Loader2, Building2, Plus, Pencil, Trash2 } from 'lucide-react';
 import { Helmet } from 'react-helmet';
 import { useToast } from '@/hooks/use-toast';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-
+import { DepartmentImportDialog } from '@/components/departments/DepartmentImportDialog';
 interface Department {
   id: string;
   name: string;
@@ -179,14 +179,16 @@ export default function Departments() {
             <p className="text-muted-foreground">إنشاء وتعديل الأقسام في المنظمة</p>
           </div>
           
-          <Dialog open={isDialogOpen} onOpenChange={(open) => { if (!open) resetForm(); setIsDialogOpen(open); }}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="ml-2 h-4 w-4" />
-                إضافة قسم
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
+          <div className="flex items-center gap-2">
+            <DepartmentImportDialog />
+            <Dialog open={isDialogOpen} onOpenChange={(open) => { if (!open) resetForm(); setIsDialogOpen(open); }}>
+              <DialogTrigger asChild>
+                <Button>
+                  <Plus className="ml-2 h-4 w-4" />
+                  إضافة قسم
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
               <DialogHeader>
                 <DialogTitle>{editingDept ? 'تعديل القسم' : 'إضافة قسم جديد'}</DialogTitle>
                 <DialogDescription>
@@ -237,10 +239,11 @@ export default function Departments() {
                     )}
                     {editingDept ? 'حفظ التعديلات' : 'إضافة'}
                   </Button>
-                </DialogFooter>
-              </form>
-            </DialogContent>
-          </Dialog>
+                  </DialogFooter>
+                </form>
+              </DialogContent>
+            </Dialog>
+          </div>
         </div>
 
         <Card>
