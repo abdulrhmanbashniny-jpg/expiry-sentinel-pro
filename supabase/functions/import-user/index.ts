@@ -54,8 +54,9 @@ serve(async (req) => {
       );
     }
 
-    // Generate temporary email if not provided (using employee number)
-    const userEmail = email || `${employee_number}@temp.local`;
+    // Generate temporary email if not provided (using employee number with valid domain)
+    // Supabase Auth requires a valid-looking email format
+    const userEmail = email || `emp_${employee_number}@internal.placeholder.com`;
     const userPassword = password || generateRandomPassword();
 
     // Create user in auth.users
