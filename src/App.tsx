@@ -48,6 +48,7 @@ import EmployeePortal from "./pages/EmployeePortal";
 import AuditLog from "./pages/AuditLog";
 import DocumentSignatures from "./pages/DocumentSignatures";
 import NotFound from "./pages/NotFound";
+import EscalationDashboard from "./pages/EscalationDashboard";
 import { Loader2 } from "lucide-react";
 
 const queryClient = new QueryClient();
@@ -93,6 +94,7 @@ const AppRoutes = () => {
         <Route path="categories" element={<Categories />} />
         <Route path="reminder-rules" element={<ReminderRules />} />
         <Route path="reminders" element={<ReminderDashboard />} />
+              <Route path="escalation-dashboard" element={<EscalationDashboard />} />
         <Route path="settings" element={<Settings />} />
         <Route path="security" element={<Security />} />
         <Route path="team-management" element={<TeamManagement />} />
