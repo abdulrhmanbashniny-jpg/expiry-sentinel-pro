@@ -171,14 +171,14 @@ export function EditInvitationDialog({ invitation, open, onOpenChange, onSuccess
             <div className="space-y-2">
               <Label>القسم</Label>
               <Select
-                value={form.department_id}
-                onValueChange={(v) => handleChange('department_id', v)}
+                value={form.department_id || '__none__'}
+                onValueChange={(v) => handleChange('department_id', v === '__none__' ? '' : v)}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="اختر القسم" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">بدون قسم</SelectItem>
+                  <SelectItem value="__none__">بدون قسم</SelectItem>
                   {departments.map((dept) => (
                     <SelectItem key={dept.id} value={dept.id}>
                       {dept.name}
