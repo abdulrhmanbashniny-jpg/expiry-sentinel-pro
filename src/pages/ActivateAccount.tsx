@@ -66,9 +66,30 @@ export default function ActivateAccount() {
 
         const invData = invitationData[0];
 
-        // Check if already used
+        // Check invitation status
         if (invData.status === 'accepted') {
           setError('تم استخدام هذا الرابط مسبقاً. يمكنك تسجيل الدخول مباشرة.');
+          setIsLoading(false);
+          return;
+        }
+
+        if (invData.status === 'revoked') {
+          setError('تم إلغاء هذه الدعوة من قبل الإدارة. يرجى التواصل مع مدير النظام للحصول على دعوة جديدة.');
+          setIsLoading(false);
+          return;
+        }
+
+        // Check expiration
+        const expiresAt = new Date(invData.expires_at);
+        if (new Date() > expiresAt) {
+          setError('انتهت صلاحية هذه الدعوة. يرجى طلب دعوة جديدة من الإدارة.');
+          setIsLoading(false);
+          return;
+        }
+
+        // Only pending invitations can be activated
+        if (invData.status !== 'pending') {
+          setError('حالة الدعوة غير صالحة للتفعيل. يرجى التواصل مع الإدارة.');
           setIsLoading(false);
           return;
         }

@@ -24,6 +24,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { ROLE_LABELS, AppRole } from '@/types/database';
 import { InviteUserDialog } from '@/components/users/InviteUserDialog';
+import { InvitationsTab } from '@/components/users/InvitationsTab';
 import TestTelegramDialog from '@/components/TestTelegramDialog';
 
 // Remove invisible Unicode characters (RTL marks, zero-width chars, etc.) from emails
@@ -474,15 +475,19 @@ export default function UserManagement() {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full max-w-md grid-cols-2">
+        <TabsList className="grid w-full max-w-lg grid-cols-3">
           <TabsTrigger value="users" className="gap-2">
             <Users className="h-4 w-4" />
             الموظفون
             <Badge variant="secondary" className="mr-1">{activeUsers.length}</Badge>
           </TabsTrigger>
+          <TabsTrigger value="invitations" className="gap-2">
+            <Mail className="h-4 w-4" />
+            الدعوات
+          </TabsTrigger>
           <TabsTrigger value="recipients" className="gap-2">
             <UserCog className="h-4 w-4" />
-            المستلمون الخارجيون
+            المستلمون
             <Badge variant="secondary" className="mr-1">{recipients.length}</Badge>
           </TabsTrigger>
         </TabsList>
@@ -671,6 +676,11 @@ export default function UserManagement() {
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* Invitations Tab */}
+        <TabsContent value="invitations" className="space-y-4 mt-4">
+          <InvitationsTab />
         </TabsContent>
 
         {/* Recipients Tab */}
