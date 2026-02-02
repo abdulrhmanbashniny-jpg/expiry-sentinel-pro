@@ -203,6 +203,7 @@ const NewItem: React.FC = () => {
         notes: formData.notes,
         reminder_rule_id: formData.reminder_rule_id,
         recipient_ids: selectedRecipients,
+        dynamic_fields: formData.dynamic_fields,
       });
       navigate('/items');
     } catch (error: any) {

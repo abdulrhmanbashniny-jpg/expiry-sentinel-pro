@@ -15,6 +15,7 @@ interface CreateItemData {
   attachment_url?: string;
   reminder_rule_id?: string;
   recipient_ids?: string[];
+  dynamic_fields?: Record<string, string>; // Unlimited dynamic fields
 }
 
 export const useItems = () => {
@@ -98,6 +99,7 @@ export const useItems = () => {
           attachment_url: data.attachment_url || null,
           reminder_rule_id: data.reminder_rule_id || null,
           created_by_user_id: userData.user?.id,
+          dynamic_fields: data.dynamic_fields || {},
         })
         .select()
         .single();
