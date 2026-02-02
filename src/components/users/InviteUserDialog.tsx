@@ -155,8 +155,8 @@ export const InviteUserDialog: React.FC<InviteUserDialogProps> = ({
       if (inviteError) throw inviteError;
 
       // Generate activation link
-      const baseUrl = window.location.origin;
-      const activationLink = `${baseUrl}/activate?token=${token}&company=${currentTenant.code}`;
+const baseUrl = 'https://expiry-sentinel-pro.lovable.app';
+const activationLink = `${baseUrl}/activate?token=${token}&company=${companyCode}`;
       setInviteLink(activationLink);
 
       // Email notification - currently disabled (no email service configured)
