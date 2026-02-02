@@ -13,23 +13,17 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 
 /**
- * سياسة الحقول الديناميكية (Dynamic Fields Policy)
- * ================================================
+ * نظام الحقول الديناميكية (Unlimited Dynamic Fields)
+ * ===================================================
  * 
  * الحقول الديناميكية هي حقول إضافية يمكن إضافتها لكل قسم أو فئة بشكل مرن.
  * يتم تخزين القيم في عمود dynamic_fields (JSONB) في جدول items.
  * 
- * ### ترقيم الحقول:
- * - يتوفر 30 حقل ديناميكي (field_01 إلى field_30)
- * - كل قسم يستخدم مجموعة محددة من الحقول بناءً على احتياجاته
- * - يجب توثيق استخدام الحقول لتجنب التعارض
- * 
- * ### أمثلة التوزيع:
- * - الموارد البشرية: field_01 - field_05 (5 حقول)
- * - الصيانة: field_06 - field_07 (حقلين)
- * - الشؤون القانونية: field_08 - field_17 (10 حقول)
- * - المالية: field_18 - field_22 (5 حقول)
- * - الباقي متاح للأقسام الجديدة
+ * ### مفتاح الحقل (field_key):
+ * - يمكنك استخدام أي مفتاح نصي فريد (مثال: request_number, contract_value)
+ * - يجب أن يكون باللغة الإنجليزية بدون مسافات
+ * - يُفضل استخدام snake_case (مثال: employee_id, hire_date)
+ * - لا يوجد حد أقصى لعدد الحقول
  * 
  * ### أنواع الحقول المدعومة:
  * - text: حقل نصي عادي
@@ -82,13 +76,13 @@ const EXAMPLE_JSON = `{
       "risk_level": "high",
       "dynamic_fields": [
         {
-          "field_key": "field_01",
+          "field_key": "employee_number",
           "field_label": "رقم الموظف",
           "field_type": "text",
           "is_required": true
         },
         {
-          "field_key": "field_02",
+          "field_key": "hire_date",
           "field_label": "تاريخ التعيين",
           "field_type": "date",
           "is_required": true
@@ -102,23 +96,29 @@ const EXAMPLE_JSON = `{
       "risk_level": "high",
       "dynamic_fields": [
         {
-          "field_key": "field_03",
+          "field_key": "contract_type",
           "field_label": "نوع العقد",
           "field_type": "select",
           "field_options": ["دائم", "مؤقت", "استشاري"],
           "is_required": true
+        },
+        {
+          "field_key": "contract_value",
+          "field_label": "قيمة العقد",
+          "field_type": "number",
+          "is_required": false
         }
       ]
     }
   ],
   "dynamic_fields": [
     {
-      "field_key": "field_04",
+      "field_key": "sub_department",
       "field_label": "الإدارة الفرعية",
       "field_type": "text"
     },
     {
-      "field_key": "field_05",
+      "field_key": "priority_level",
       "field_label": "مستوى الأولوية",
       "field_type": "select",
       "field_options": ["عادي", "متوسط", "عاجل"]
@@ -158,13 +158,27 @@ export function DepartmentImportDialog() {
         throw new Error('حقل "categories" يجب أن يكون مصفوفة');
       }
 
-      // Validate dynamic fields
+      // Validate dynamic fields - no more field_XX restriction
       const validateFields = (fields: DynamicFieldDef[] | undefined, context: string) => {
         if (!fields) return;
+        const usedKeys = new Set<string>();
+        
         for (const field of fields) {
           if (!field.field_key || !field.field_label) {
             throw new Error(`الحقول الديناميكية في ${context} تفتقد field_key أو field_label`);
           }
+          
+          // Validate field_key format (no spaces, English only)
+          if (!/^[a-z][a-z0-9_]*$/i.test(field.field_key)) {
+            throw new Error(`مفتاح الحقل "${field.field_key}" غير صالح. يجب أن يكون باللغة الإنجليزية بدون مسافات (مثال: employee_id)`);
+          }
+          
+          // Check for duplicate keys
+          if (usedKeys.has(field.field_key)) {
+            throw new Error(`مفتاح الحقل "${field.field_key}" مكرر في ${context}`);
+          }
+          usedKeys.add(field.field_key);
+          
           if (!['text', 'number', 'date', 'select'].includes(field.field_type)) {
             throw new Error(`نوع الحقل "${field.field_type}" غير مدعوم في ${context}. الأنواع المدعومة: text, number, date, select`);
           }
@@ -384,17 +398,15 @@ export function DepartmentImportDialog() {
                     </div>
 
                     <div>
-                      <h4 className="font-semibold mb-2">سياسة الحقول الديناميكية:</h4>
-                      <div className="bg-amber-50 dark:bg-amber-950/30 p-3 rounded-lg border border-amber-200 dark:border-amber-800">
-                        <p className="text-amber-800 dark:text-amber-200 mb-2">
-                          <strong>مهم:</strong> يتوفر 30 حقل ديناميكي (field_01 إلى field_30). يجب توزيعها بين الأقسام لتجنب التعارض.
+                      <h4 className="font-semibold mb-2">نظام الحقول الديناميكية (غير محدود):</h4>
+                      <div className="bg-emerald-50 dark:bg-emerald-950/30 p-3 rounded-lg border border-emerald-200 dark:border-emerald-800">
+                        <p className="text-emerald-800 dark:text-emerald-200 mb-2">
+                          <strong>✓ لا يوجد حد أقصى لعدد الحقول!</strong>
                         </p>
                         <div className="text-muted-foreground space-y-1">
-                          <p>• <strong>الموارد البشرية:</strong> field_01 - field_05</p>
-                          <p>• <strong>الصيانة والتشغيل:</strong> field_06 - field_07</p>
-                          <p>• <strong>الشؤون القانونية:</strong> field_08 - field_17</p>
-                          <p>• <strong>المالية:</strong> field_18 - field_22</p>
-                          <p>• <strong>متاح للأقسام الجديدة:</strong> field_23 - field_30</p>
+                          <p>• استخدم أي مفتاح نصي فريد (بالإنجليزية)</p>
+                          <p>• يُفضل استخدام snake_case: <code className="bg-muted px-1 rounded">employee_id</code>, <code className="bg-muted px-1 rounded">contract_value</code></p>
+                          <p>• تجنب المسافات والأحرف الخاصة في المفتاح</p>
                         </div>
                       </div>
                     </div>
@@ -425,7 +437,7 @@ export function DepartmentImportDialog() {
                       <h4 className="font-semibold mb-2">مثال لحقل ديناميكي:</h4>
                       <pre className="bg-muted p-2 rounded text-xs overflow-x-auto" dir="ltr">
 {`{
-  "field_key": "field_01",
+  "field_key": "employee_number",
   "field_label": "رقم الموظف",
   "field_type": "text",
   "is_required": true
@@ -437,7 +449,7 @@ export function DepartmentImportDialog() {
                       <h4 className="font-semibold mb-2">مثال لحقل من نوع select:</h4>
                       <pre className="bg-muted p-2 rounded text-xs overflow-x-auto" dir="ltr">
 {`{
-  "field_key": "field_03",
+  "field_key": "contract_type",
   "field_label": "نوع العقد",
   "field_type": "select",
   "field_options": ["دائم", "مؤقت", "استشاري"],
