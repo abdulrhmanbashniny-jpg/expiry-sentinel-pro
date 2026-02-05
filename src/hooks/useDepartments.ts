@@ -26,11 +26,12 @@ export const useDepartments = () => {
         .eq('is_active', true)
         .order('name', { ascending: true });
 
-      // Apply tenant filter
+      // Apply tenant filter - also include departments with NULL tenant_id (shared/global)
       if (currentTenant?.id) {
-        query = query.eq('tenant_id', currentTenant.id);
+        query = query.or(`tenant_id.eq.${currentTenant.id},tenant_id.is.null`);
       } else if (!isPlatformAdmin) {
-        return [];
+        // For non-platform admins without a tenant, show departments with null tenant_id
+        query = query.is('tenant_id', null);
       }
 
       const { data, error } = await query;
@@ -38,7 +39,8 @@ export const useDepartments = () => {
       if (error) throw error;
       return data as Department[];
     },
-    enabled: !!currentTenant || isPlatformAdmin,
+    // Always enabled - we want to fetch even if tenant is null (for shared departments)
+    enabled: true,
   });
 
   return {
