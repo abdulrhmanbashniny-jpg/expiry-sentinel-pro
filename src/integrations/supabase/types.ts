@@ -976,6 +976,138 @@ export type Database = {
           },
         ]
       }
+      escalation_log: {
+        Row: {
+          acknowledged_at: string | null
+          acknowledged_by: string | null
+          created_at: string | null
+          current_recipient_id: string
+          escalated_at: string | null
+          escalation_level: number
+          escalation_reason: string | null
+          id: string
+          item_id: string | null
+          next_escalation_at: string | null
+          notification_id: string | null
+          original_recipient_id: string
+          previous_recipient_id: string | null
+          resolution_notes: string | null
+          sent_at: string | null
+          status: string
+          tenant_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          created_at?: string | null
+          current_recipient_id: string
+          escalated_at?: string | null
+          escalation_level?: number
+          escalation_reason?: string | null
+          id?: string
+          item_id?: string | null
+          next_escalation_at?: string | null
+          notification_id?: string | null
+          original_recipient_id: string
+          previous_recipient_id?: string | null
+          resolution_notes?: string | null
+          sent_at?: string | null
+          status?: string
+          tenant_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          created_at?: string | null
+          current_recipient_id?: string
+          escalated_at?: string | null
+          escalation_level?: number
+          escalation_reason?: string | null
+          id?: string
+          item_id?: string | null
+          next_escalation_at?: string | null
+          notification_id?: string | null
+          original_recipient_id?: string
+          previous_recipient_id?: string | null
+          resolution_notes?: string | null
+          sent_at?: string | null
+          status?: string
+          tenant_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "escalation_log_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "escalation_log_notification_id_fkey"
+            columns: ["notification_id"]
+            isOneToOne: false
+            referencedRelation: "notification_log"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "escalation_log_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      escalation_rules: {
+        Row: {
+          created_at: string | null
+          delay_hours: number
+          escalation_level: number
+          id: string
+          is_active: boolean | null
+          message_template: string | null
+          notification_channels: string[] | null
+          recipient_role: string
+          tenant_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          delay_hours?: number
+          escalation_level: number
+          id?: string
+          is_active?: boolean | null
+          message_template?: string | null
+          notification_channels?: string[] | null
+          recipient_role: string
+          tenant_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          delay_hours?: number
+          escalation_level?: number
+          id?: string
+          is_active?: boolean | null
+          message_template?: string | null
+          notification_channels?: string[] | null
+          recipient_role?: string
+          tenant_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "escalation_rules_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       evaluation_answers: {
         Row: {
           choice_value: string | null
@@ -2062,6 +2194,57 @@ export type Database = {
           },
           {
             foreignKeyName: "notification_log_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organizational_hierarchy: {
+        Row: {
+          created_at: string | null
+          department_id: string | null
+          director_id: string | null
+          employee_id: string
+          id: string
+          manager_id: string | null
+          supervisor_id: string | null
+          tenant_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          department_id?: string | null
+          director_id?: string | null
+          employee_id: string
+          id?: string
+          manager_id?: string | null
+          supervisor_id?: string | null
+          tenant_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          department_id?: string | null
+          director_id?: string | null
+          employee_id?: string
+          id?: string
+          manager_id?: string | null
+          supervisor_id?: string | null
+          tenant_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organizational_hierarchy_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "organizational_hierarchy_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
@@ -3171,6 +3354,10 @@ export type Database = {
       }
     }
     Functions: {
+      acknowledge_escalation: {
+        Args: { p_escalation_id: string }
+        Returns: boolean
+      }
       activate_invitation: { Args: { p_token: string }; Returns: boolean }
       can_view_department: {
         Args: { _department_id: string; _user_id: string }
@@ -3212,6 +3399,14 @@ export type Database = {
           status: string
           tenant_id: string
         }[]
+      }
+      get_next_escalation_recipient: {
+        Args: {
+          p_current_level: number
+          p_employee_id: string
+          p_tenant_id: string
+        }
+        Returns: string
       }
       get_team_member_ids: {
         Args: { _supervisor_id: string }
@@ -3268,6 +3463,10 @@ export type Database = {
       is_system_admin: { Args: { _user_id: string }; Returns: boolean }
       is_tenant_admin: { Args: { _tenant_id: string }; Returns: boolean }
       is_user_in_tenant: { Args: { _tenant_id: string }; Returns: boolean }
+      resolve_escalation: {
+        Args: { p_escalation_id: string; p_notes?: string }
+        Returns: boolean
+      }
       submit_evaluation_with_score: {
         Args: { p_evaluation_id: string }
         Returns: {

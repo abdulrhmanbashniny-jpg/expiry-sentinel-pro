@@ -58,21 +58,29 @@ const NewItem: React.FC = () => {
 
   // Filter departments based on user's scope (users only see their assigned departments)
   const userDepartments = useMemo(() => {
-    if (!user) return departments;
+    // If no user or user is admin/system_admin, show all departments
+    if (!user || isAdmin || isSystemAdmin) {
+      return departments;
+    }
     
     // Get department IDs the user has access to
     const userDeptIds = departmentScopes
       .filter(scope => scope.user_id === user.id)
       .map(scope => scope.department_id);
     
-    // If user has no scopes, show all (for admins) or none
-    if (userDeptIds.length === 0) {
-      // Admins see all
+    // If user has scopes, filter departments
+    if (userDeptIds.length > 0) {
+      return departments.filter(d => userDeptIds.includes(d.id));
+    }
+    
+    // Supervisors without scopes see all departments
+    if (isSupervisor) {
       return departments;
     }
     
-    return departments.filter(d => userDeptIds.includes(d.id));
-  }, [user, departments, departmentScopes]);
+    // Employees without scopes see no departments (they should have scopes)
+    return [];
+  }, [user, departments, departmentScopes, isAdmin, isSystemAdmin, isSupervisor]);
 
   // Filter categories based on selected department
   const filteredCategories = formData.department_id 
