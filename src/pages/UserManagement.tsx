@@ -18,7 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   Users, Search, Edit, MessageCircle, Send, Loader2,
-  UserX, Trash2, AlertTriangle, UserPlus, CheckSquare, Mail, Check, X, Plus, UserCog
+  UserX, Trash2, AlertTriangle, UserPlus, CheckSquare, Mail, Check, X, Plus, UserCog, ArrowRightLeft
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -26,6 +26,7 @@ import { ROLE_LABELS, AppRole } from '@/types/database';
 import { InviteUserDialog } from '@/components/users/InviteUserDialog';
 import { InvitationsTab } from '@/components/users/InvitationsTab';
 import TestTelegramDialog from '@/components/TestTelegramDialog';
+import { TransferTenantDialog } from '@/components/users/TransferTenantDialog';
 
 // Remove invisible Unicode characters (RTL marks, zero-width chars, etc.) from emails
 function sanitizeEmail(email: string): string {
@@ -83,6 +84,10 @@ export default function UserManagement() {
 
   // Invite user dialog
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
+
+  // Transfer tenant dialog
+  const [transferDialogOpen, setTransferDialogOpen] = useState(false);
+  const [transferUser, setTransferUser] = useState<any>(null);
 
   // Recipients state
   const [isAddingRecipient, setIsAddingRecipient] = useState(false);
@@ -655,15 +660,34 @@ export default function UserManagement() {
                                   <UserX className="h-4 w-4" />
                                 </Button>
                                 {isSystemAdmin && (
-                                  <Button 
-                                    size="sm" 
-                                    variant="ghost" 
-                                    onClick={() => openDeleteDialog(user)}
-                                    title="حذف الحساب"
-                                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
+                                  <>
+                                    <Button 
+                                      size="sm" 
+                                      variant="ghost" 
+                                      onClick={() => openDeleteDialog(user)}
+                                      title="حذف الحساب"
+                                      className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      onClick={() => {
+                                        setTransferUser({
+                                          user_id: profile.user_id,
+                                          full_name: profile.full_name,
+                                          email: profile.email,
+                                          tenant_id: profile.tenant_id,
+                                        });
+                                        setTransferDialogOpen(true);
+                                      }}
+                                      title="نقل إلى شركة أخرى"
+                                      className="text-primary hover:text-primary hover:bg-primary/10"
+                                    >
+                                      <ArrowRightLeft className="h-4 w-4" />
+                                    </Button>
+                                  </>
                                 )}
                               </div>
                             </TableCell>
@@ -1156,6 +1180,13 @@ export default function UserManagement() {
         open={inviteDialogOpen}
         onOpenChange={setInviteDialogOpen}
         departments={departments.map(d => ({ id: d.id, name: d.name }))}
+        onSuccess={refetch}
+      />
+      {/* Transfer Tenant Dialog */}
+      <TransferTenantDialog
+        open={transferDialogOpen}
+        onOpenChange={setTransferDialogOpen}
+        user={transferUser}
         onSuccess={refetch}
       />
     </div>
