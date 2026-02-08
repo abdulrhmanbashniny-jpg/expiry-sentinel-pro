@@ -139,7 +139,11 @@ Deno.serve(async (req) => {
         // 5. جلب تفاصيل المعاملة والموظف
         const { data: itemData } = await supabase
           .from('items')
-          .select('title, ref_number')
+          .select(`
+            title, ref_number, expiry_date,
+            category:categories(name),
+            department:departments(name)
+          `)
           .eq('id', escalation.item_id)
           .single();
 
@@ -154,6 +158,24 @@ Deno.serve(async (req) => {
           .select('full_name')
           .eq('user_id', escalation.current_recipient_id)
           .single();
+
+        // جلب سلسلة التصعيد السابقة لبناء ملخص
+        const { data: escalationChain } = await supabase
+          .from('escalation_log')
+          .select('escalation_level, current_recipient_id, status, created_at, escalated_at')
+          .eq('item_id', escalation.item_id)
+          .eq('original_recipient_id', escalation.original_recipient_id)
+          .order('escalation_level', { ascending: true });
+
+        // بناء ملخص من لم يستجب
+        const unacknowledgedLevels: string[] = [];
+        if (escalationChain) {
+          for (const entry of escalationChain) {
+            if (entry.status === 'escalated' || entry.status === 'expired') {
+              unacknowledgedLevels.push(LEVEL_NAMES[entry.escalation_level] || `المستوى ${entry.escalation_level}`);
+            }
+          }
+        }
 
         // 6. تحديث السجل الحالي كـ "مصعّد"
         await supabase
@@ -190,16 +212,41 @@ Deno.serve(async (req) => {
           continue;
         }
 
-        // 8. إنشاء إشعار داخلي للمستقبل الجديد
-        const messageTitle = `تصعيد - ${LEVEL_NAMES[nextLevel]}`;
-        let messageBody = rule.message_template || `معاملة تحتاج متابعتك`;
+        // 8. بناء رسالة التصعيد الاحترافية
+        const messageTitle = `🚨 تصعيد (${LEVEL_NAMES[nextLevel]}) - المستوى ${nextLevel}`;
         
-        // استبدال المتغيرات في الرسالة
-        messageBody = messageBody
+        // استبدال المتغيرات في قالب الرسالة
+        let ruleMessage = (rule.message_template || 'معاملة تحتاج متابعتك')
           .replace('{employee_name}', employeeData?.full_name || 'موظف')
           .replace('{supervisor_name}', previousRecipientData?.full_name || 'المسؤول السابق')
           .replace('{item_title}', itemData?.title || 'معاملة')
           .replace('{item_ref}', itemData?.ref_number || '');
+
+        // بناء الرسالة الكاملة مع التفاصيل
+        const itemDept = (itemData?.department as any)?.name || '-';
+        const itemCat = (itemData?.category as any)?.name || '-';
+        const itemRef = itemData?.ref_number || '-';
+        const itemExpiry = itemData?.expiry_date || '-';
+        const PUBLISHED_APP_URL = 'https://expiry-sentinel-pro.lovable.app';
+
+        const chainSummary = unacknowledgedLevels.length > 0
+          ? `❌ لم يستجب: ${unacknowledgedLevels.join(' ← ')}`
+          : '';
+
+        const messageBody = `${ruleMessage}
+
+📋 تفاصيل المعاملة:
+📁 العنوان: ${itemData?.title || '-'}
+🔢 المرجع: ${itemRef}
+🏢 القسم: ${itemDept}
+📂 الفئة: ${itemCat}
+📅 تاريخ الاستحقاق: ${itemExpiry}
+👤 الموظف الأصلي: ${employeeData?.full_name || '-'}
+
+${chainSummary}
+
+🔗 رابط المعاملة:
+${PUBLISHED_APP_URL}/items/${escalation.item_id}`;
 
         // إنشاء إشعار in_app
         await supabase.from('in_app_notifications').insert({
@@ -215,6 +262,8 @@ Deno.serve(async (req) => {
         });
 
         // 9. إرسال إشعارات عبر القنوات المحددة
+        const fullMessage = `${messageTitle}\n\n${messageBody}`;
+
         if (rule.notification_channels.includes('whatsapp') || rule.notification_channels.includes('telegram')) {
           // جلب بيانات المستقبل
           const { data: recipientProfile } = await supabase
@@ -230,10 +279,11 @@ Deno.serve(async (req) => {
                 await supabase.functions.invoke('send-whatsapp', {
                   body: {
                     phone: recipientProfile.phone,
-                    message: `🚨 ${messageTitle}\n\n${messageBody}`,
+                    message: fullMessage,
                     tenantId: escalation.tenant_id,
                   },
                 });
+                console.log(`✅ WhatsApp escalation sent to level ${nextLevel}`);
               } catch (e) {
                 console.error('خطأ في إرسال WhatsApp:', e);
               }
@@ -245,10 +295,11 @@ Deno.serve(async (req) => {
                 await supabase.functions.invoke('send-telegram', {
                   body: {
                     chat_id: recipientProfile.telegram_user_id,
-                    message: `🚨 ${messageTitle}\n\n${messageBody}`,
+                    message: fullMessage,
                     tenantId: escalation.tenant_id,
                   },
                 });
+                console.log(`✅ Telegram escalation sent to level ${nextLevel}`);
               } catch (e) {
                 console.error('خطأ في إرسال Telegram:', e);
               }
