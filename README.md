@@ -1,342 +1,316 @@
 # 🔔 Expiry Sentinel Pro - HR Reminder & Performance Evaluation System
 
-> **Production-Ready Multi-Tenant SaaS Platform for HR Document Management**
+> **Production-Ready Multi-Tenant SaaS Platform for HR Document Management, Automated Reminders & Performance Evaluations**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![TypeScript](https://img.shields.io/badge/TypeScript-93.1%25-blue)](https://www.typescriptlang.org/)
-[![PLpgSQL](https://img.shields.io/badge/PLpgSQL-6.4%25-orange)](https://www.postgresql.org/)
+[![Status](https://img.shields.io/badge/Status-Production%20Ready-green)](https://expiry-sentinel-pro.lovable.app)
+[![Version](https://img.shields.io/badge/Version-3.0.0-blue)](https://github.com/abdulrhmanbashniny-jpg/expiry-sentinel-pro)
 
 ---
 
 ## 📋 Overview
 
-**Expiry Sentinel Pro** is a comprehensive multi-tenant SaaS platform designed for HR departments to manage document expiry, employee evaluations, and automated notifications. Built with modern web technologies and enterprise-grade security.
+**Expiry Sentinel Pro** (المعروف أيضاً باسم **HR Reminder**) هو منصة SaaS متعددة المستأجرين (Multi-Tenant) مصممة لأقسام الموارد البشرية لإدارة:
 
-### 🎯 Key Features
-
-- ✅ **Multi-Tenant Architecture** - Complete data isolation between companies
-- ✅ **Unified Reminder System** - Smart notifications for contracts, documents, evaluations
-- ✅ **Multi-Channel Notifications** - WhatsApp, Telegram, Email, In-App
-- ✅ **Smart Contract Management** - Track renewals, expirations, and auto-alerts
-- ✅ **Employee Portal** - Self-service requests and approvals
-- ✅ **Support Ticket System** - Full ticketing with SLA tracking
-- ✅ **Digital Signatures** - Sign documents electronically with legal proof
-- ✅ **Comprehensive Audit Log** - Track all operations with timestamps
-- ✅ **AI Risk Predictions** - Predictive analytics for document compliance
-- ✅ **Feature Toggles** - Enable/disable features per tenant
-- ✅ **Row-Level Security (RLS)** - Database-level data isolation
+- 📄 **انتهاء صلاحية الوثائق والعقود** — تتبع تلقائي مع تنبيهات ذكية
+- 📊 **تقييم أداء الموظفين** — دورات تقييم شاملة مع تحليل بالذكاء الاصطناعي
+- 🔔 **التذكيرات والتصعيد التلقائي** — نظام تصعيد هرمي متعدد المستويات
+- 🏢 **إدارة متعددة الشركات** — عزل كامل للبيانات بين المنظمات
 
 ---
 
-## 🏗️ Architecture
+## 🎯 الميزات الأساسية
 
-### Tech Stack
+### إدارة الوثائق والعقود
+- ✅ **تتبع المعاملات** — رقم مرجعي، قسم، فئة، تاريخ استحقاق
+- ✅ **إدارة العقود الذكية** — تجديد تلقائي، تنبيهات انتهاء، أنواع متعددة
+- ✅ **حقول ديناميكية** — إضافة حقول مخصصة حسب القسم أو الفئة
+- ✅ **سير العمل (Workflow)** — حالات متعددة: جديد ← قيد العمل ← مكتمل ← مراجعة
+- ✅ **إثبات الإنجاز** — رفع مرفقات وملاحظات عند إكمال المعاملة
 
-| Layer | Technology |
-|-------|------------|
-| **Frontend** | React 18 + TypeScript + Vite |
-| **Styling** | Tailwind CSS + shadcn/ui |
-| **Backend** | Supabase (PostgreSQL + Edge Functions) |
-| **Real-time** | Supabase Realtime |
-| **Storage** | Supabase Storage |
-| **Auth** | Supabase Auth + RLS |
-| **Deployment** | Lovable.dev |
+### نظام التذكيرات والتصعيد
+- ✅ **تذكيرات تلقائية** — قواعد قابلة للتخصيص (7، 14، 30 يوم قبل الاستحقاق)
+- ✅ **تصعيد تسلسلي آلي** — موظف ← مشرف ← مدير ← مدير عام ← HR
+- ✅ **تتبع سلسلة الاستجابة** — يوضح من استجاب ومن لم يستجب بوضوح
+- ✅ **رسائل تصعيد احترافية** — تتضمن تفاصيل المعاملة الكاملة ورابط مباشر
+- ✅ **قنوات متعددة** — واتساب، تيليجرام، بريد إلكتروني، إشعارات داخلية
 
-### Database Schema
+### تقييم الأداء
+- ✅ **دورات تقييم** — إنشاء دورات مع قوالب KPI مخصصة
+- ✅ **تقييم 360 درجة** — تقييم ذاتي + من المشرف + من الزملاء
+- ✅ **تحليل بالذكاء الاصطناعي** — ملخصات وتوصيات وتحليل مخاطر
+- ✅ **نشر النتائج** — نشر للموظفين مع إمكانية الاستئناف
+- ✅ **تعديل ومراجعة** — نظام مراجعات مع سجل تدقيق كامل
 
-#### Core Tables
-- `tenants` - Company/organization records
-- `profiles` - User profiles with roles and tenant association
-- `user_invitations` - Employee invitation system
-- `tenant_settings` - Per-tenant configuration
-- `tenant_notification_settings` - Notification channel preferences
+### الهيكل التنظيمي وإدارة الفرق
+- ✅ **إدارة الأقسام** — أقسام مع مديرين ورموز تعريفية
+- ✅ **إدارة الفرق** — ربط الموظفين بالمشرفين والمديرين
+- ✅ **التفويض** — تفويض الصلاحيات لموظف آخر لفترة محددة
+- ✅ **نطاقات الأقسام** — التحكم بوصول المستخدم لأقسام متعددة
 
-#### HR & Documents
-- `items` - Document/contract tracking
-- `item_status_log` - Status change history
-- `contracts` - Smart contract management
-- `contract_alerts` - Automated contract reminders
-- `evaluations` - Employee performance reviews
-- `evaluation_cycles` - Review periods
+### الأمان والصلاحيات
+- ✅ **Multi-Tenant Architecture** — عزل كامل بين الشركات
+- ✅ **Row-Level Security (RLS)** — أمان على مستوى قاعدة البيانات
+- ✅ **RBAC** — أربع مستويات: system_admin، admin، supervisor، employee
+- ✅ **إدارة الصلاحيات** — التحكم بالصفحات ونطاق البيانات لكل دور
+- ✅ **سجل التدقيق** — تسجيل كامل لجميع العمليات
+- ✅ **إعدادات الأمان** — مهلة الجلسة، طول كلمة المرور، محاولات الدخول
 
-#### Notifications & Reminders
-- `reminder_rules` - Automated reminder configurations
-- `in_app_notifications` - Internal notifications
-- `notification_log` - Notification history
-
-#### Support & Ticketing
-- `support_tickets` - Customer support tickets
-- `ticket_replies` - Ticket conversation threads
-- `service_requests` - Employee service requests
-
-#### Advanced Features
-- `document_signatures` - Digital signature records
-- `signature_requests` - Signature workflows
-- `audit_log` - Complete system audit trail
-- `ai_risk_predictions` - AI-powered risk analysis
-- `feature_toggles` - Feature flag management
-
----
-
-## 🚀 Getting Started
-
-### Prerequisites
-
-```bash
-Node.js >= 18.0.0
-npm >= 9.0.0
-Supabase account
-```
-
-### Installation
-
-1. **Clone the repository**
-```bash
-git clone https://github.com/abdulrhmanbashniny-jpg/expiry-sentinel-pro.git
-cd expiry-sentinel-pro
-```
-
-2. **Install dependencies**
-```bash
-npm install
-```
-
-3. **Set up environment variables**
-```bash
-cp .env.example .env
-```
-
-Edit `.env` with your Supabase credentials:
-```env
-VITE_SUPABASE_URL=your_supabase_project_url
-VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
-```
-
-4. **Run database migrations**
-```bash
-npm run db:migrate
-```
-
-5. **Start development server**
-```bash
-npm run dev
-```
+### ميزات إضافية
+- ✅ **بوابة الموظف** — طلبات الخدمة الذاتية
+- ✅ **نظام تذاكر الدعم** — تتبع SLA والأولويات
+- ✅ **التوقيع الرقمي** — توقيع المستندات إلكترونياً
+- ✅ **تقارير الامتثال** — تقارير دورية مع تحليل AI
+- ✅ **مستشار الامتثال الذكي** — استشارات فورية بالذكاء الاصطناعي
+- ✅ **تنبؤات المخاطر بالذكاء الاصطناعي** — تحليل تنبؤي للمعاملات عالية المخاطر
+- ✅ **Feature Toggles** — تفعيل/تعطيل الميزات لكل شركة
+- ✅ **استيراد/تصدير البيانات** — استيراد المستخدمين والمعاملات من Excel
 
 ---
 
-## 🔐 Multi-Tenant System
+## 🏗️ التقنيات المستخدمة
 
-### How It Works
-
-| Step | Description |
-|------|-------------|
-| **1. Create Tenant** | System Admin creates new company from `/tenant-management` |
-| **2. Invite Users** | Admin sends invite → User automatically linked to `tenant_id` |
-| **3. Data Isolation** | Every query filtered by `tenant_id = get_current_tenant_id()` |
-| **4. Independent Integrations** | Each tenant has separate API keys in `tenant_integrations` |
-| **5. Change Protection** | Triggers prevent `tenant_id` modification after creation |
-
-### Login Flow
-
-**Super Admin Login:**
-- Company Code: `ADMIN`
-- Email: Your admin email
-- Password: Your password
-- Access: All tenants with tenant switcher
-
-**Regular User Login:**
-- Company Code: Your company code (e.g., `JPF`, `HOTEL`)
-- Email: Your email
-- Password: Your password
-- Access: Only your company's data
-
-### Security Features
-
-✅ **Row-Level Security (RLS)**
-- All sensitive tables have RLS enabled
-- Policies enforce `tenant_id` filtering
-- `WITH CHECK` prevents cross-tenant data insertion
-
-✅ **Trigger-Based Protection**
-- Prevents `tenant_id` changes after record creation
-- Immutable tenant association
-
-✅ **Secure Functions**
-- `get_invitation_by_token()` - Safe token validation
-- `activate_invitation()` - Secure account activation
-- `is_feature_enabled()` - Feature flag checks
+| الطبقة | التقنية |
+|--------|---------|
+| **الواجهة الأمامية** | React 18 + TypeScript + Vite |
+| **التصميم** | Tailwind CSS + shadcn/ui |
+| **قاعدة البيانات** | PostgreSQL مع RLS |
+| **الوظائف السحابية** | Edge Functions (Deno) |
+| **الإشعارات** | WhatsApp (AppsLink) + Telegram Bot + Email (Resend) |
+| **الذكاء الاصطناعي** | Gemini / GPT (Lovable AI) |
+| **الاستضافة** | Lovable Cloud |
 
 ---
 
-## 📡 Notification System
+## 🔐 النظام متعدد المستأجرين (Multi-Tenant)
 
-### Supported Channels
+### كيف يعمل
 
-| Channel | Status | Integration |
-|---------|--------|-------------|
-| 📱 **WhatsApp** | ✅ Active | Twilio API |
-| 💬 **Telegram** | ✅ Active | Telegram Bot API |
-| 📧 **Email** | ✅ Active | Resend API |
-| 🔔 **In-App** | ✅ Active | Supabase Realtime |
+| الخطوة | الوصف |
+|--------|-------|
+| **1. إنشاء شركة** | مدير النظام ينشئ شركة جديدة برمز فريد (مثل: `JPF`) |
+| **2. دعوة مستخدمين** | إرسال دعوات → المستخدم يرتبط تلقائياً بالشركة |
+| **3. عزل البيانات** | كل استعلام يتم ترشيحه بـ `tenant_id` عبر RLS |
+| **4. تكاملات مستقلة** | كل شركة لها مفاتيح API خاصة للتكاملات |
 
-### Unified Notification Service
+### تسجيل الدخول
 
-**Edge Function:** `unified-notification`
+**مدير النظام (Super Admin):**
+- رمز الشركة: `ADMIN`
+- البريد: بريد المدير
+- كلمة المرور: كلمة المرور
+- الوصول: جميع الشركات عبر مبدّل الشركات
 
-```typescript
-// Usage Example
-const { sendNotification } = useNotificationService();
+**المستخدم العادي:**
+- رمز الشركة: رمز شركته (مثل: `JPF`)
+- البريد: بريده الإلكتروني
+- كلمة المرور: كلمة المرور
+- الوصول: بيانات شركته فقط
 
-await sendNotification({
-  recipientId: 'user-uuid',
-  channels: ['whatsapp', 'email', 'in_app'],
-  message: 'Your contract expires in 7 days',
-  priority: 'high',
-  metadata: { itemId: 'item-uuid' }
-});
+---
+
+## 🚨 نظام التصعيد التلقائي
+
+```
+📩 تنبيه أولي → الموظف
+    ↓ [24 ساعة بدون استجابة]
+📩 تصعيد المستوى 1 → المشرف
+    ❌ لم يستجب: الموظف
+    ↓ [24 ساعة بدون استجابة]
+📩 تصعيد المستوى 2 → المدير
+    ❌ لم يستجب: الموظف ← المشرف
+    ↓ [24 ساعة بدون استجابة]
+📩 تصعيد المستوى 3 → المدير العام
+    ❌ لم يستجب: الموظف ← المشرف ← المدير
+    ↓ [24 ساعة بدون استجابة]
+📩 تصعيد نهائي → إدارة الموارد البشرية
+    ❌ لم يستجب: جميع المستويات
 ```
 
-### Reminder Rules
-
-- Configure reminders per entity type (contracts, documents, evaluations)
-- Set custom reminder intervals (7 days, 14 days, 30 days, etc.)
-- Choose notification channels per rule
-- Auto-escalation to managers
-
----
-
-## 🎫 Support Ticket System
-
-Full-featured ticketing with:
-- Priority levels (Low, Medium, High, Urgent)
-- SLA tracking and breach alerts
-- Automatic assignment
-- Thread-based conversations
-- File attachments
-- Status workflow (Open → In Progress → Resolved → Closed)
+كل رسالة تصعيد تتضمن:
+- 📋 تفاصيل المعاملة الكاملة (العنوان، المرجع، القسم، الفئة)
+- 📅 تاريخ الاستحقاق والأيام المتبقية
+- 👤 اسم الموظف الأصلي
+- ❌ ملخص سلسلة عدم الاستجابة
+- 🔗 رابط مباشر للمعاملة
 
 ---
 
-## ✍️ Digital Signature System
+## 📡 قنوات الإشعارات
 
-- Draw signatures with mouse/touch
-- Attach signatures to documents
-- Track signature requests and status
-- Legal timestamp and proof
-- Audit trail for compliance
-
----
-
-## 📊 Analytics & Reports
-
-- **Reminder Dashboard** - Unified view of all upcoming expirations
-- **Compliance Reports** - Track document status per department
-- **Performance Metrics** - Evaluation completion rates
-- **Ticket Analytics** - Support team performance and SLA compliance
-- **AI Risk Predictions** - Predictive analytics for high-risk items
+| القناة | الحالة | التكامل |
+|--------|--------|---------|
+| 💬 **واتساب** | ✅ مفعّل | AppsLink API |
+| 🤖 **تيليجرام** | ✅ مفعّل | Telegram Bot API |
+| 📧 **بريد إلكتروني** | ✅ مفعّل | Resend API |
+| 🔔 **إشعارات داخلية** | ✅ مفعّل | Realtime |
 
 ---
 
-## 🔧 Configuration
-
-### Feature Toggles
-
-Enable/disable features per tenant from `/settings`:
-
-```sql
--- Example: Enable contracts feature for tenant
-INSERT INTO feature_toggles (tenant_id, feature_key, enabled)
-VALUES ('tenant-uuid', 'contracts', true);
-```
-
-### Notification Settings
-
-```sql
--- Configure channels per tenant
-INSERT INTO tenant_notification_settings (tenant_id, channel, enabled)
-VALUES 
-  ('tenant-uuid', 'whatsapp', true),
-  ('tenant-uuid', 'email', true);
-```
-
----
-
-## 📁 Project Structure
+## 📁 هيكل المشروع
 
 ```
 expiry-sentinel-pro/
 ├── src/
-│   ├── components/        # Reusable UI components
-│   ├── hooks/            # Custom React hooks
-│   │   ├── useTenantQuery.ts      # Auto tenant filtering
-│   │   ├── useNotificationService.ts
-│   │   └── useFeatureToggles.ts
-│   ├── pages/            # Page components
-│   │   ├── ReminderDashboard.tsx
-│   │   ├── Contracts.tsx
-│   │   ├── SupportTickets.tsx
-│   │   ├── EmployeePortal.tsx
-│   │   └── TenantManagement.tsx
-│   ├── contexts/         # React contexts
-│   │   └── TenantContext.tsx
-│   └── utils/            # Utility functions
+│   ├── components/          # المكونات القابلة لإعادة الاستخدام
+│   │   ├── dashboard/       # مكونات لوحة التحكم
+│   │   ├── departments/     # مكونات الأقسام
+│   │   ├── items/           # مكونات المعاملات
+│   │   ├── layout/          # التخطيط العام (Sidebar, Navbar)
+│   │   ├── profile/         # إعدادات الملف الشخصي
+│   │   ├── users/           # إدارة المستخدمين والدعوات
+│   │   ├── workflow/        # سير العمل وإثبات الإنجاز
+│   │   └── ui/              # مكونات shadcn/ui
+│   ├── contexts/            # React Contexts
+│   │   ├── AuthContext.tsx   # سياق المصادقة
+│   │   └── TenantContext.tsx # سياق الشركة (Multi-Tenant)
+│   ├── hooks/               # Custom Hooks
+│   │   ├── useTenantQuery.ts       # ترشيح تلقائي بالشركة
+│   │   ├── useItems.ts             # إدارة المعاملات
+│   │   ├── useEscalations.ts       # نظام التصعيد
+│   │   ├── useDelegations.ts       # التفويضات
+│   │   ├── useEvaluations.ts       # التقييمات
+│   │   ├── useNotifications.ts     # الإشعارات
+│   │   └── useWorkflowActions.ts   # إجراءات سير العمل
+│   ├── pages/               # صفحات التطبيق
+│   │   ├── Dashboard.tsx           # لوحة التحكم الرئيسية
+│   │   ├── Items.tsx               # إدارة المعاملات
+│   │   ├── Contracts.tsx           # إدارة العقود
+│   │   ├── Evaluations.tsx         # التقييمات
+│   │   ├── ReminderDashboard.tsx   # لوحة التذكيرات
+│   │   ├── EscalationDashboard.tsx # لوحة التصعيدات
+│   │   ├── Delegations.tsx         # التفويضات
+│   │   ├── EmployeePortal.tsx      # بوابة الموظف
+│   │   ├── SupportTickets.tsx      # تذاكر الدعم
+│   │   ├── TenantManagement.tsx    # إدارة الشركات
+│   │   ├── TeamManagement.tsx      # إدارة الفرق
+│   │   ├── UserManagement.tsx      # إدارة المستخدمين
+│   │   ├── PermissionManagement.tsx # إدارة الصلاحيات
+│   │   ├── Security.tsx            # إعدادات الأمان
+│   │   ├── AIAdvisor.tsx           # مستشار AI
+│   │   └── Settings.tsx            # الإعدادات
+│   └── types/               # TypeScript Types
 ├── supabase/
-│   ├── functions/        # Edge Functions
-│   │   ├── unified-notification/
-│   │   └── send-notification/
-│   └── migrations/       # Database migrations
-├── docs/                 # Documentation
-│   ├── MULTI_TENANT.md   # Multi-tenant guide
-│   └── API.md            # API documentation
-└── README.md
+│   ├── functions/           # Edge Functions
+│   │   ├── process-escalations/    # معالجة التصعيدات
+│   │   ├── automated-reminders/    # التذكيرات التلقائية
+│   │   ├── ai-advisor/             # مستشار AI
+│   │   ├── send-telegram/          # إرسال تيليجرام
+│   │   ├── send-whatsapp/          # إرسال واتساب
+│   │   ├── unified-notification/   # الإشعارات الموحدة
+│   │   └── ...                     # وظائف أخرى
+│   └── migrations/          # ملفات الترحيل (قاعدة البيانات)
+├── docs/                    # التوثيق
+│   ├── MULTI_TENANT.md      # دليل Multi-Tenant
+│   ├── API.md               # مرجع API
+│   ├── DEPLOYMENT.md        # دليل النشر
+│   ├── ESCALATION_SYSTEM.md # نظام التصعيد
+│   └── DASHBOARD_AND_REPORTS.md # التقارير
+├── INTEGRATIONS.md          # دليل التكاملات
+├── DOCUMENTATION.md         # فهرس التوثيق
+└── README.md                # هذا الملف
 ```
 
 ---
 
-## 🔒 Security Updates (January 2026)
+## 📊 جداول قاعدة البيانات الأساسية
 
-### ✅ Resolved Issues
+### الجداول الأساسية
+| الجدول | الوصف |
+|--------|-------|
+| `tenants` | الشركات/المنظمات |
+| `profiles` | ملفات المستخدمين مع الأدوار والشركة |
+| `user_roles` | أدوار المستخدمين (RBAC) |
+| `user_department_scopes` | نطاقات الأقسام للمستخدم |
+| `departments` | الأقسام مع المديرين |
+| `categories` | فئات المعاملات |
 
-| # | Issue | Status | Details |
-|---|-------|--------|----------|
-| 1 | Account Activation Broken | ✅ Fixed | Secure functions implemented |
-| 2 | Security Definer Views | ✅ Fixed | Recreated with `security_invoker = true` |
-| 3 | feature_toggles public | ✅ Secured | RLS with tenant isolation |
-| 4 | evaluation_data public | ✅ Fixed | Restricted to authenticated only |
-| 5 | evaluation_cycles public | ✅ Fixed | Added tenant isolation |
-| 6 | departments public | ✅ Fixed | Restricted to tenant scope |
-| 7 | templates public | ✅ Fixed | RLS with tenant isolation |
-| 8 | Telegram webhook unauth | ✅ Fixed | Secret token verification added |
+### المعاملات والعقود
+| الجدول | الوصف |
+|--------|-------|
+| `items` | المعاملات/الوثائق |
+| `item_status_log` | سجل تغييرات الحالة |
+| `item_recipients` | مستلمي المعاملة |
+| `item_deadlines` | مواعيد نهائية متعددة لكل معاملة |
+| `contracts` | العقود مع التجديد التلقائي |
+| `contract_alerts` | تنبيهات العقود |
+
+### التذكيرات والتصعيد
+| الجدول | الوصف |
+|--------|-------|
+| `notification_log` | سجل الإشعارات المرسلة |
+| `escalation_log` | سجل التصعيدات |
+| `escalation_rules` | قواعد التصعيد (المستوى، المدة، الدور) |
+| `in_app_notifications` | الإشعارات الداخلية |
+| `message_templates` | قوالب الرسائل |
+
+### التقييمات
+| الجدول | الوصف |
+|--------|-------|
+| `evaluation_cycles` | دورات التقييم |
+| `evaluations` | التقييمات الفردية |
+| `evaluation_answers` | إجابات التقييم |
+| `kpi_templates` | قوالب مؤشرات الأداء |
+| `published_results` | النتائج المنشورة |
+| `evaluation_appeals` | الاستئنافات |
+
+### إدارة الشركات
+| الجدول | الوصف |
+|--------|-------|
+| `tenant_integrations` | تكاملات كل شركة |
+| `tenant_notification_settings` | إعدادات الإشعارات |
+| `tenant_usage_stats` | إحصائيات الاستخدام |
+| `feature_toggles` | تبديل الميزات |
 
 ---
 
-## 📚 Documentation
+## 🔒 الأمان
 
-- [Multi-Tenant Architecture](./docs/MULTI_TENANT.md)
-- [Integration Guide](./INTEGRATIONS.md)
-- [API Reference](./docs/API.md)
-- [Deployment Guide](./docs/DEPLOYMENT.md)
+### التحديثات الأمنية (فبراير 2026)
 
----
-
-## 🤝 Contributing
-
-Contributions are welcome! Please:
-1. Fork the repository
-2. Create a feature branch
-3. Commit your changes
-4. Push to the branch
-5. Open a Pull Request
+| # | المشكلة | الحالة | التفاصيل |
+|---|---------|--------|----------|
+| 1 | تفعيل الحسابات | ✅ تم الحل | دوال آمنة مع توثيق Token |
+| 2 | Views غير آمنة | ✅ تم الحل | إعادة إنشاء مع `security_invoker = true` |
+| 3 | feature_toggles عام | ✅ تم التأمين | RLS مع عزل الشركة |
+| 4 | بيانات التقييم عامة | ✅ تم الحل | مقيد للمصرّح لهم فقط |
+| 5 | الأقسام عامة | ✅ تم الحل | مقيد لنطاق الشركة |
+| 6 | Webhook بدون توثيق | ✅ تم الحل | تحقق من رمز سري |
+| 7 | متغيرات القوالب | ✅ تم الحل | تصحيح أسماء المتغيرات |
+| 8 | رسائل التصعيد فارغة | ✅ تم الحل | بيانات كاملة مع سلسلة الاستجابة |
 
 ---
 
-## 📝 License
+## 📚 التوثيق
 
-MIT License - see [LICENSE](./LICENSE) for details
+- [📖 فهرس التوثيق الكامل](./DOCUMENTATION.md)
+- [🏗️ دليل Multi-Tenant](./docs/MULTI_TENANT.md)
+- [🔌 دليل التكاملات](./INTEGRATIONS.md)
+- [📡 مرجع API](./docs/API.md)
+- [🚀 دليل النشر](./docs/DEPLOYMENT.md)
+- [🚨 نظام التصعيد](./docs/ESCALATION_SYSTEM.md)
+- [📊 لوحة التحكم والتقارير](./docs/DASHBOARD_AND_REPORTS.md)
 
 ---
 
-## 👨‍💻 Author
+## 🤝 المساهمة
+
+1. Fork المستودع
+2. إنشاء فرع جديد للميزة
+3. عمل Commit للتغييرات
+4. رفع التغييرات
+5. فتح Pull Request
+
+---
+
+## 📝 الرخصة
+
+MIT License - راجع [LICENSE](./LICENSE) للتفاصيل
+
+---
+
+## 👨‍💻 المطور
 
 **Abdulrhman Bashniny**
 - Email: abdulrhman.bashniny@gmail.com
@@ -344,14 +318,14 @@ MIT License - see [LICENSE](./LICENSE) for details
 
 ---
 
-## 🙏 Acknowledgments
+## 🙏 شكر وتقدير
 
-- Built with [Lovable.dev](https://lovable.dev)
-- Powered by [Supabase](https://supabase.com)
-- UI Components from [shadcn/ui](https://ui.shadcn.com)
+- مبني بـ [Lovable.dev](https://lovable.dev)
+- يعمل على [Lovable Cloud](https://lovable.dev)
+- مكونات UI من [shadcn/ui](https://ui.shadcn.com)
 
 ---
 
-**Last Updated:** January 29, 2026  
-**Version:** 2.0.0  
-**Status:** Production Ready ✅
+**آخر تحديث:** فبراير 15, 2026  
+**الإصدار:** 3.0.0  
+**الحالة:** Production Ready ✅
