@@ -100,6 +100,128 @@ export type Database = {
           },
         ]
       }
+      ai_audit_trail: {
+        Row: {
+          action_type: string
+          agent_key: string
+          approval_required: boolean
+          approved_at: string | null
+          approved_by: string | null
+          created_at: string
+          error_message: string | null
+          execution_time_ms: number | null
+          id: string
+          input_params: Json | null
+          output_result: Json | null
+          rejection_reason: string | null
+          status: string
+          tenant_id: string | null
+          tokens_used: number | null
+          tool_used: string
+          user_id: string
+        }
+        Insert: {
+          action_type: string
+          agent_key: string
+          approval_required?: boolean
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          error_message?: string | null
+          execution_time_ms?: number | null
+          id?: string
+          input_params?: Json | null
+          output_result?: Json | null
+          rejection_reason?: string | null
+          status?: string
+          tenant_id?: string | null
+          tokens_used?: number | null
+          tool_used: string
+          user_id: string
+        }
+        Update: {
+          action_type?: string
+          agent_key?: string
+          approval_required?: boolean
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          error_message?: string | null
+          execution_time_ms?: number | null
+          id?: string
+          input_params?: Json | null
+          output_result?: Json | null
+          rejection_reason?: string | null
+          status?: string
+          tenant_id?: string | null
+          tokens_used?: number | null
+          tool_used?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_audit_trail_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_feedback_log: {
+        Row: {
+          applied_at: string | null
+          audit_trail_id: string | null
+          correction_type: string
+          created_at: string
+          id: string
+          is_applied: boolean
+          original_output: string | null
+          tenant_id: string | null
+          user_correction: string
+          user_id: string
+        }
+        Insert: {
+          applied_at?: string | null
+          audit_trail_id?: string | null
+          correction_type?: string
+          created_at?: string
+          id?: string
+          is_applied?: boolean
+          original_output?: string | null
+          tenant_id?: string | null
+          user_correction: string
+          user_id: string
+        }
+        Update: {
+          applied_at?: string | null
+          audit_trail_id?: string | null
+          correction_type?: string
+          created_at?: string
+          id?: string
+          is_applied?: boolean
+          original_output?: string | null
+          tenant_id?: string | null
+          user_correction?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_feedback_log_audit_trail_id_fkey"
+            columns: ["audit_trail_id"]
+            isOneToOne: false
+            referencedRelation: "ai_audit_trail"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_feedback_log_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ai_prompts: {
         Row: {
           created_at: string
@@ -230,6 +352,119 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "ai_risk_predictions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_tool_definitions: {
+        Row: {
+          category: string
+          created_at: string
+          description: string | null
+          description_en: string | null
+          function_name: string | null
+          id: string
+          input_schema: Json | null
+          is_active: boolean
+          risk_level: string
+          tool_key: string
+          tool_name: string
+          tool_name_en: string | null
+          updated_at: string
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          description?: string | null
+          description_en?: string | null
+          function_name?: string | null
+          id?: string
+          input_schema?: Json | null
+          is_active?: boolean
+          risk_level?: string
+          tool_key: string
+          tool_name: string
+          tool_name_en?: string | null
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          description?: string | null
+          description_en?: string | null
+          function_name?: string | null
+          id?: string
+          input_schema?: Json | null
+          is_active?: boolean
+          risk_level?: string
+          tool_key?: string
+          tool_name?: string
+          tool_name_en?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      ai_tool_permissions: {
+        Row: {
+          can_execute: boolean
+          can_read: boolean
+          can_write: boolean
+          created_at: string
+          description: string | null
+          granted_by: string | null
+          id: string
+          is_active: boolean
+          max_daily_calls: number | null
+          requires_approval: boolean
+          role: Database["public"]["Enums"]["app_role"]
+          tenant_id: string | null
+          tool_key: string
+          tool_name: string
+          tool_name_en: string | null
+          updated_at: string
+        }
+        Insert: {
+          can_execute?: boolean
+          can_read?: boolean
+          can_write?: boolean
+          created_at?: string
+          description?: string | null
+          granted_by?: string | null
+          id?: string
+          is_active?: boolean
+          max_daily_calls?: number | null
+          requires_approval?: boolean
+          role: Database["public"]["Enums"]["app_role"]
+          tenant_id?: string | null
+          tool_key: string
+          tool_name: string
+          tool_name_en?: string | null
+          updated_at?: string
+        }
+        Update: {
+          can_execute?: boolean
+          can_read?: boolean
+          can_write?: boolean
+          created_at?: string
+          description?: string | null
+          granted_by?: string | null
+          id?: string
+          is_active?: boolean
+          max_daily_calls?: number | null
+          requires_approval?: boolean
+          role?: Database["public"]["Enums"]["app_role"]
+          tenant_id?: string | null
+          tool_key?: string
+          tool_name?: string
+          tool_name_en?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_tool_permissions_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
@@ -3363,6 +3598,10 @@ export type Database = {
         Args: { _department_id: string; _user_id: string }
         Returns: boolean
       }
+      check_ai_daily_limit: {
+        Args: { _tool_key: string; _user_id: string }
+        Returns: boolean
+      }
       check_template_usage: {
         Args: { p_template_id: string }
         Returns: {
@@ -3427,6 +3666,10 @@ export type Database = {
       get_user_role: {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
+      }
+      has_ai_permission: {
+        Args: { _action_type: string; _tool_key: string; _user_id: string }
+        Returns: boolean
       }
       has_role: {
         Args: {
