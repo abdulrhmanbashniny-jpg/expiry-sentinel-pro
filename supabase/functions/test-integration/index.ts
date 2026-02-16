@@ -103,6 +103,7 @@ serve(async (req) => {
         result = await testN8n(config);
         break;
       case 'ai_assistant':
+      case 'ai_context':
         result = await testAI(config);
         break;
       default:
