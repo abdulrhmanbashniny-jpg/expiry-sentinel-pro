@@ -49,6 +49,7 @@ import AuditLog from "./pages/AuditLog";
 import DocumentSignatures from "./pages/DocumentSignatures";
 import NotFound from "./pages/NotFound";
 import EscalationDashboard from "./pages/EscalationDashboard";
+import SentinelGuide from "./pages/SentinelGuide";
 import { Loader2 } from "lucide-react";
 
 const queryClient = new QueryClient();
@@ -125,6 +126,7 @@ const AppRoutes = () => {
         <Route path="employee-portal" element={<EmployeePortal />} />
         <Route path="audit-log" element={<AuditLog />} />
         <Route path="document-signatures" element={<DocumentSignatures />} />
+        <Route path="sentinel-guide" element={<SentinelGuide />} />
       </Route>
       <Route path="*" element={<NotFound />} />
     </Routes>

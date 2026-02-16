@@ -11,7 +11,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { Shield, Users, Eye, EyeOff, Save, Loader2, AlertTriangle, Building2 } from 'lucide-react';
+import { Shield, Users, Eye, EyeOff, Save, Loader2, AlertTriangle, Building2, Brain } from 'lucide-react';
+import AIPermissionsTab from '@/components/permissions/AIPermissionsTab';
 
 interface RolePermission {
   role: string;
@@ -207,7 +208,7 @@ const PermissionManagement: React.FC = () => {
       )}
 
       <Tabs defaultValue="pages" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="pages" className="gap-2">
             <Eye className="h-4 w-4" />
             صلاحيات الصفحات
@@ -215,6 +216,10 @@ const PermissionManagement: React.FC = () => {
           <TabsTrigger value="data" className="gap-2">
             <Building2 className="h-4 w-4" />
             نطاق البيانات
+          </TabsTrigger>
+          <TabsTrigger value="ai" className="gap-2">
+            <Brain className="h-4 w-4" />
+            صلاحيات AI
           </TabsTrigger>
         </TabsList>
 
@@ -339,6 +344,9 @@ const PermissionManagement: React.FC = () => {
               </Alert>
             </CardContent>
           </Card>
+        </TabsContent>
+        <TabsContent value="ai" className="mt-4">
+          <AIPermissionsTab />
         </TabsContent>
       </Tabs>
     </div>
