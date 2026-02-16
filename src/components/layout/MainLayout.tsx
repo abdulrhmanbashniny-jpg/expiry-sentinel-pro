@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { NotificationBell } from './NotificationBell';
 import { TenantSwitcher } from './TenantSwitcher';
+import { SentinelChatbox } from '@/components/ai/SentinelChatbox';
 
 export const MainLayout: React.FC = () => {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -68,6 +69,7 @@ export const MainLayout: React.FC = () => {
           <Outlet />
         </div>
       </main>
+      <SentinelChatbox />
     </div>
   );
 };
