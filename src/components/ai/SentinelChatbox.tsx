@@ -9,7 +9,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import {
   Bot, Send, X, Minimize2, Maximize2, Loader2,
-  User, CheckCircle, XCircle, AlertTriangle, Sparkles
+  User, CheckCircle, XCircle, AlertTriangle, Sparkles,
+  Shield, TrendingUp, MessageSquare, ThumbsDown, RotateCcw
 } from 'lucide-react';
 import { toast } from 'sonner';
 import ReactMarkdown from 'react-markdown';
@@ -22,6 +23,7 @@ interface ChatMessage {
   timestamp: Date;
   pending_approvals?: ApprovalCard[];
   isStreaming?: boolean;
+  agent?: string;
 }
 
 interface ApprovalCard {
@@ -39,7 +41,22 @@ const PAGE_LABELS: Record<string, string> = {
   '/departments': 'الأقسام',
   '/evaluations': 'التقييمات',
   '/reminders': 'التذكيرات',
+  '/reminder-rules': 'قواعد التذكير',
   '/compliance-reports': 'تقارير الامتثال',
+  '/categories': 'التصنيفات',
+  '/recipients': 'المستلمين',
+  '/audit-log': 'سجل التدقيق',
+  '/settings': 'الإعدادات',
+  '/user-management': 'إدارة المستخدمين',
+  '/team-management': 'إدارة الفرق',
+  '/escalation-dashboard': 'لوحة التصعيد',
+};
+
+const AGENT_CONFIG: Record<string, { icon: typeof Bot; label: string; color: string }> = {
+  auditor: { icon: Shield, label: 'وكيل التدقيق', color: 'text-orange-500' },
+  predictor: { icon: TrendingUp, label: 'وكيل التنبؤ', color: 'text-blue-500' },
+  communicator: { icon: MessageSquare, label: 'وكيل التواصل', color: 'text-green-500' },
+  sentinel: { icon: Bot, label: 'Sentinel AI', color: 'text-primary' },
 };
 
 export const SentinelChatbox = () => {
@@ -50,8 +67,10 @@ export const SentinelChatbox = () => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [activeAgent, setActiveAgent] = useState<string>('sentinel');
+  const [feedbackMsgId, setFeedbackMsgId] = useState<string | null>(null);
+  const [feedbackText, setFeedbackText] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLTextAreaElement>(null);
 
   const currentPage = PAGE_LABELS[location.pathname] || location.pathname;
 
@@ -73,15 +92,37 @@ export const SentinelChatbox = () => {
       setMessages(prev => prev.map(msg => ({
         ...msg,
         pending_approvals: msg.pending_approvals?.map(a =>
-          a.audit_id === auditId ? { ...a, status: approved ? 'approved' : 'rejected' } : a
+          a.audit_id === auditId ? { ...a, status: approved ? 'approved' as const : 'rejected' as const } : a
         )
       })));
 
       toast.success(approved ? 'تمت الموافقة على العملية' : 'تم رفض العملية');
-    } catch (e: any) {
+    } catch {
       toast.error('فشل في تحديث حالة الموافقة');
     }
   }, [user]);
+
+  const submitFeedback = useCallback(async (msgId: string) => {
+    if (!feedbackText.trim() || !user) return;
+    
+    const msg = messages.find(m => m.id === msgId);
+    if (!msg) return;
+
+    try {
+      await supabase.from('ai_feedback_log').insert({
+        user_id: user.id,
+        original_output: msg.content.substring(0, 500),
+        user_correction: feedbackText.trim(),
+        correction_type: 'content',
+        is_applied: true,
+      });
+      toast.success('تم حفظ الملاحظة. سيتعلم Sentinel من تصحيحك.');
+      setFeedbackMsgId(null);
+      setFeedbackText('');
+    } catch {
+      toast.error('فشل في حفظ الملاحظة');
+    }
+  }, [feedbackText, messages, user]);
 
   const sendMessage = useCallback(async () => {
     if (!input.trim() || isLoading) return;
@@ -121,9 +162,7 @@ export const SentinelChatbox = () => {
         }),
       });
 
-      if (!response.ok) {
-        throw new Error('فشل في الاتصال بالخادم');
-      }
+      if (!response.ok) throw new Error('فشل في الاتصال بالخادم');
 
       const reader = response.body?.getReader();
       if (!reader) throw new Error('No stream available');
@@ -132,6 +171,7 @@ export const SentinelChatbox = () => {
       let buffer = '';
       let fullText = '';
       let approvals: ApprovalCard[] = [];
+      let detectedAgent = 'sentinel';
 
       while (true) {
         const { done, value } = await reader.read();
@@ -141,50 +181,57 @@ export const SentinelChatbox = () => {
         const lines = buffer.split('\n');
         buffer = lines.pop() || '';
 
+        let currentEvent = '';
         for (const line of lines) {
           if (line.startsWith('event: ')) {
-            const eventType = line.slice(7);
+            currentEvent = line.slice(7);
             continue;
           }
           if (line.startsWith('data: ')) {
             try {
               const data = JSON.parse(line.slice(6));
-              const eventLine = lines[lines.indexOf(line) - 1];
-              const eventType = eventLine?.startsWith('event: ') ? eventLine.slice(7) : 'unknown';
 
-              if (eventType === 'token') {
-                fullText += data.text;
-                setMessages(prev => prev.map(m =>
-                  m.id === assistantId ? { ...m, content: fullText } : m
-                ));
-              } else if (eventType === 'thinking') {
-                // Show thinking status
-              } else if (eventType === 'tool_call') {
-                fullText += `\n\n🔧 *جاري تنفيذ: ${data.tool}...*\n`;
-                setMessages(prev => prev.map(m =>
-                  m.id === assistantId ? { ...m, content: fullText } : m
-                ));
-              } else if (eventType === 'observation') {
-                // Tool result received, AI will continue
-              } else if (eventType === 'approval_needed') {
-                approvals.push({
-                  audit_id: data.audit_id,
-                  tool_key: data.tool_key,
-                  tool_name: data.tool_name,
-                  params: data.params,
-                  status: 'pending',
-                });
-              } else if (eventType === 'done') {
-                if (data.full_response && !fullText) {
-                  fullText = data.full_response;
-                }
-                if (data.pending_approvals?.length > 0) {
-                  approvals = data.pending_approvals.map((a: any) => ({ ...a, status: 'pending' }));
-                }
-              } else if (eventType === 'error') {
-                fullText += `\n\n⚠️ ${data.message}`;
+              switch (currentEvent) {
+                case 'agent':
+                  detectedAgent = data.agent || 'sentinel';
+                  setActiveAgent(detectedAgent);
+                  setMessages(prev => prev.map(m =>
+                    m.id === assistantId ? { ...m, agent: detectedAgent } : m
+                  ));
+                  break;
+                case 'token':
+                  fullText += data.text;
+                  setMessages(prev => prev.map(m =>
+                    m.id === assistantId ? { ...m, content: fullText } : m
+                  ));
+                  break;
+                case 'tool_call':
+                  fullText += `\n\n🔧 *${data.tool}...*\n`;
+                  setMessages(prev => prev.map(m =>
+                    m.id === assistantId ? { ...m, content: fullText } : m
+                  ));
+                  break;
+                case 'approval_needed':
+                  approvals.push({
+                    audit_id: data.audit_id,
+                    tool_key: data.tool_key,
+                    tool_name: data.tool_name,
+                    params: data.params,
+                    status: 'pending',
+                  });
+                  break;
+                case 'done':
+                  if (data.full_response && !fullText) fullText = data.full_response;
+                  if (data.pending_approvals?.length > 0) {
+                    approvals = data.pending_approvals.map((a: any) => ({ ...a, status: 'pending' as const }));
+                  }
+                  if (data.agent) detectedAgent = data.agent;
+                  break;
+                case 'error':
+                  fullText += `\n\n⚠️ ${data.message}`;
+                  break;
               }
-            } catch (e) {
+            } catch {
               // Skip malformed JSON
             }
           }
@@ -197,6 +244,7 @@ export const SentinelChatbox = () => {
           content: fullText || 'لم أتمكن من معالجة طلبك. يرجى المحاولة مرة أخرى.',
           isStreaming: false,
           pending_approvals: approvals.length > 0 ? approvals : undefined,
+          agent: detectedAgent,
         } : m
       ));
 
@@ -215,7 +263,6 @@ export const SentinelChatbox = () => {
 
   if (!user) return null;
 
-  // Floating button when closed
   if (!isOpen) {
     return (
       <Button
@@ -228,6 +275,8 @@ export const SentinelChatbox = () => {
     );
   }
 
+  const AgentIcon = AGENT_CONFIG[activeAgent]?.icon || Bot;
+
   return (
     <Card className={cn(
       "fixed z-50 shadow-2xl border-primary/20 flex flex-col transition-all duration-300",
@@ -238,13 +287,19 @@ export const SentinelChatbox = () => {
       {/* Header */}
       <div className="flex items-center justify-between p-3 border-b bg-primary text-primary-foreground rounded-t-lg">
         <div className="flex items-center gap-2">
-          <Bot className="h-5 w-5" />
-          <span className="font-semibold text-sm">Sentinel AI</span>
+          <AgentIcon className="h-5 w-5" />
+          <span className="font-semibold text-sm">
+            {AGENT_CONFIG[activeAgent]?.label || 'Sentinel AI'}
+          </span>
           <Badge variant="outline" className="text-[10px] border-primary-foreground/30 text-primary-foreground/80">
             {currentPage}
           </Badge>
         </div>
         <div className="flex items-center gap-1">
+          <Button variant="ghost" size="icon" className="h-7 w-7 text-primary-foreground/80 hover:text-primary-foreground hover:bg-primary-foreground/10"
+            onClick={() => { setMessages([]); setActiveAgent('sentinel'); }}>
+            <RotateCcw className="h-3.5 w-3.5" />
+          </Button>
           <Button variant="ghost" size="icon" className="h-7 w-7 text-primary-foreground/80 hover:text-primary-foreground hover:bg-primary-foreground/10"
             onClick={() => setIsMinimized(!isMinimized)}>
             {isMinimized ? <Maximize2 className="h-3.5 w-3.5" /> : <Minimize2 className="h-3.5 w-3.5" />}
@@ -261,18 +316,33 @@ export const SentinelChatbox = () => {
           {/* Messages */}
           <ScrollArea className="flex-1 p-3" ref={scrollRef}>
             {messages.length === 0 && (
-              <div className="text-center text-muted-foreground py-8 px-4">
+              <div className="text-center text-muted-foreground py-6 px-4">
                 <Bot className="h-10 w-10 mx-auto mb-3 opacity-40" />
                 <p className="font-medium text-sm">مرحباً! أنا Sentinel AI</p>
-                <p className="text-xs mt-1">مستشارك الذكي للموارد البشرية والامتثال</p>
-                <div className="mt-4 space-y-1.5 text-xs text-right">
-                  <p className="text-muted-foreground/70">جرّب أن تسألني:</p>
+                <p className="text-xs mt-1 mb-1">نظام ذكي متخصص في إدارة الوثائق والتذكيرات</p>
+                
+                {/* Agent cards */}
+                <div className="grid grid-cols-3 gap-1.5 mt-3 mb-3">
+                  {Object.entries(AGENT_CONFIG).filter(([k]) => k !== 'sentinel').map(([key, config]) => {
+                    const Icon = config.icon;
+                    return (
+                      <div key={key} className="flex flex-col items-center gap-1 p-2 rounded-md bg-muted/50 text-[10px]">
+                        <Icon className={cn("h-4 w-4", config.color)} />
+                        <span>{config.label}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div className="space-y-1.5 text-xs text-right">
+                  <p className="text-muted-foreground/70">جرّب:</p>
                   {[
-                    'ما هي العناصر المنتهية قريباً؟',
-                    'أعطني إحصائيات الأداء',
-                    'حلل المخاطر الحالية',
+                    'افحص تناسق التواريخ في جميع العناصر',
+                    'توقع أشهر الخطر القادمة',
+                    'صِغ رسالة تذكير للعقود المنتهية قريباً',
+                    'أعطني ملخص شامل للنظام',
                   ].map((q, i) => (
-                    <button key={i} onClick={() => { setInput(q); }}
+                    <button key={i} onClick={() => setInput(q)}
                       className="block w-full text-right px-3 py-1.5 rounded-md bg-muted/50 hover:bg-muted transition-colors text-foreground">
                       {q}
                     </button>
@@ -284,6 +354,22 @@ export const SentinelChatbox = () => {
             <div className="space-y-3">
               {messages.map(msg => (
                 <div key={msg.id}>
+                  {/* Agent indicator */}
+                  {msg.role === 'assistant' && msg.agent && msg.agent !== 'sentinel' && (
+                    <div className="flex items-center gap-1 mb-1 mr-9">
+                      {(() => {
+                        const cfg = AGENT_CONFIG[msg.agent];
+                        const Icon = cfg?.icon || Bot;
+                        return (
+                          <>
+                            <Icon className={cn("h-3 w-3", cfg?.color)} />
+                            <span className={cn("text-[10px] font-medium", cfg?.color)}>{cfg?.label}</span>
+                          </>
+                        );
+                      })()}
+                    </div>
+                  )}
+
                   <div className={cn("flex gap-2", msg.role === 'user' ? 'flex-row-reverse' : '')}>
                     <div className={cn(
                       "w-7 h-7 rounded-full flex items-center justify-center shrink-0",
@@ -296,7 +382,7 @@ export const SentinelChatbox = () => {
                       msg.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted'
                     )}>
                       {msg.role === 'assistant' ? (
-                        <div className="prose prose-sm dark:prose-invert max-w-none [&>p]:mb-1.5 [&>ul]:my-1 [&>h3]:text-sm [&>h3]:mt-2">
+                        <div className="prose prose-sm dark:prose-invert max-w-none [&>p]:mb-1.5 [&>ul]:my-1 [&>h3]:text-sm [&>h3]:mt-2 [&>table]:text-xs">
                           <ReactMarkdown>{msg.content || (msg.isStreaming ? '...' : '')}</ReactMarkdown>
                           {msg.isStreaming && <Loader2 className="h-3 w-3 animate-spin inline-block mr-1" />}
                         </div>
@@ -305,6 +391,33 @@ export const SentinelChatbox = () => {
                       )}
                     </div>
                   </div>
+
+                  {/* Feedback button for assistant messages */}
+                  {msg.role === 'assistant' && !msg.isStreaming && msg.content && (
+                    <div className="mr-9 mt-1">
+                      {feedbackMsgId === msg.id ? (
+                        <div className="flex gap-1.5 items-end">
+                          <Textarea
+                            value={feedbackText}
+                            onChange={e => setFeedbackText(e.target.value)}
+                            placeholder="ما التصحيح المطلوب؟"
+                            className="text-xs min-h-[32px] h-8 resize-none flex-1"
+                            rows={1}
+                          />
+                          <Button size="sm" className="h-8 text-[10px]" onClick={() => submitFeedback(msg.id)}>حفظ</Button>
+                          <Button size="sm" variant="ghost" className="h-8 text-[10px]" onClick={() => setFeedbackMsgId(null)}>إلغاء</Button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => setFeedbackMsgId(msg.id)}
+                          className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground transition-colors"
+                        >
+                          <ThumbsDown className="h-3 w-3" />
+                          <span>تصحيح</span>
+                        </button>
+                      )}
+                    </div>
+                  )}
 
                   {/* Action Cards */}
                   {msg.pending_approvals?.map(approval => (
@@ -317,7 +430,7 @@ export const SentinelChatbox = () => {
                         </Badge>
                       </div>
                       <p className="text-xs text-muted-foreground mb-1">{approval.tool_name}</p>
-                      <pre className="text-[10px] bg-muted/50 p-1.5 rounded overflow-x-auto mb-2 max-h-20">
+                      <pre className="text-[10px] bg-muted/50 p-1.5 rounded overflow-x-auto mb-2 max-h-20" dir="ltr">
                         {JSON.stringify(approval.params, null, 2)}
                       </pre>
                       {approval.status === 'pending' && (
@@ -341,7 +454,6 @@ export const SentinelChatbox = () => {
           <div className="p-3 border-t">
             <div className="flex gap-2">
               <Textarea
-                ref={inputRef}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 placeholder="اسأل Sentinel AI..."
