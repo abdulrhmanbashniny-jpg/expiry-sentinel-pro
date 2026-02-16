@@ -14,6 +14,7 @@ import { format } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import WhatsAppTestSection from '@/components/integrations/WhatsAppTestSection';
+import AIStatusDashboard from '@/components/integrations/AIStatusDashboard';
 
 const INTEGRATION_ICONS: Record<string, React.ElementType> = {
   n8n: Workflow,
@@ -478,31 +479,46 @@ export default function Integrations() {
           })}
         </div>
 
+        {/* AI Status Dashboard */}
+        <div className="lg:col-span-2">
+          <AIStatusDashboard />
+        </div>
+
         {/* WhatsApp Test Section */}
-        <WhatsAppTestSection />
+        <div className="lg:col-span-2">
+          <WhatsAppTestSection />
+        </div>
 
         {/* Quick Links */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">روابط مفيدة</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-wrap gap-2">
-              <Button variant="outline" size="sm" asChild>
-                <a href="/integration" className="flex items-center gap-2">
-                  <ExternalLink className="h-4 w-4" />
-                  دليل التكامل مع n8n
-                </a>
-              </Button>
-              <Button variant="outline" size="sm" asChild>
-                <a href="/settings" className="flex items-center gap-2">
-                  <Settings className="h-4 w-4" />
-                  الإعدادات العامة
-                </a>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+        <div className="lg:col-span-2">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">روابط مفيدة</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-wrap gap-2">
+                <Button variant="outline" size="sm" asChild>
+                  <a href="/integration" className="flex items-center gap-2">
+                    <ExternalLink className="h-4 w-4" />
+                    دليل التكامل مع n8n
+                  </a>
+                </Button>
+                <Button variant="outline" size="sm" asChild>
+                  <a href="/settings" className="flex items-center gap-2">
+                    <Settings className="h-4 w-4" />
+                    الإعدادات العامة
+                  </a>
+                </Button>
+                <Button variant="outline" size="sm" asChild>
+                  <a href="/sentinel-guide" className="flex items-center gap-2">
+                    <Brain className="h-4 w-4" />
+                    دليل Sentinel AI
+                  </a>
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </>
   );

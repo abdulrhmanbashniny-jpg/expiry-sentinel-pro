@@ -135,6 +135,7 @@ const navGroups: NavGroup[] = [
       { to: '/compliance-reports', icon: BarChart3, label: 'تقارير الالتزام', minRole: 'admin' },
       { to: '/ai-advisor', icon: Bot, label: 'مستشار الامتثال', minRole: 'admin' },
       { to: '/automation-dashboard', icon: Activity, label: 'لوحة التشغيل', minRole: 'admin' },
+      { to: '/sentinel-guide', icon: Bot, label: 'دليل Sentinel AI' },
     ],
   },
   {

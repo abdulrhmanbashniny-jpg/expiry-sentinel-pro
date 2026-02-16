@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { Badge } from '@/components/ui/badge';
 import { Helmet } from 'react-helmet';
+import AISettingsSection from '@/components/settings/AISettingsSection';
 
 interface ApiKeyItem {
   name: string;
@@ -328,12 +329,15 @@ const Settings: React.FC = () => {
           </CardContent>
         </Card>
 
+        {/* AI Settings */}
+        <AISettingsSection />
+
         {/* Version Info */}
         <Card>
           <CardContent className="py-4">
             <div className="flex items-center justify-between text-sm text-muted-foreground">
               <span>الإصدار: 2.0.0</span>
-              <span>آخر تحديث: يناير 2026</span>
+              <span>آخر تحديث: فبراير 2026</span>
             </div>
           </CardContent>
         </Card>
