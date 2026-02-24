@@ -1,6 +1,6 @@
 import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowRight, Edit, Calendar, User, Building, FileText, Clock, Repeat, Eye } from 'lucide-react';
+import { ArrowRight, Edit, Calendar, User, Building, FileText, Clock, Repeat, Eye, ArrowUp } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -15,6 +15,9 @@ import SendTelegramDialog from '@/components/SendTelegramDialog';
 import WorkflowActions from '@/components/workflow/WorkflowActions';
 import ItemTimeline from '@/components/workflow/ItemTimeline';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { supabase } from '@/integrations/supabase/client';
+import { useQuery } from '@tanstack/react-query';
+import { getLevelName } from '@/hooks/useEscalations';
 
 const ItemDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -26,6 +29,21 @@ const ItemDetails: React.FC = () => {
   
   // Check permissions for this item
   const { canEdit, canDelete, isRecipient, isLoading: permissionsLoading } = useItemPermissions(id, itemCreatorId);
+
+  // Fetch escalation status for this item
+  const { data: itemEscalation } = useQuery({
+    queryKey: ['item-escalation', id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('escalation_log')
+        .select('id, escalation_level, status, current_recipient_id, next_escalation_at')
+        .eq('item_id', id!)
+        .order('escalation_level', { ascending: false })
+        .limit(1);
+      return data?.[0] || null;
+    },
+    enabled: !!id,
+  });
 
   const getStatusBadge = (status: ItemStatus, expiryDate: string) => {
     const daysLeft = Math.ceil((new Date(expiryDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
@@ -95,6 +113,18 @@ const ItemDetails: React.FC = () => {
             <div className="flex items-center gap-3">
               <h1 className="text-2xl font-bold">{item.title}</h1>
               {getWorkflowBadge(workflowStatus)}
+              {itemEscalation && itemEscalation.status === 'pending' && (
+                <Badge variant="destructive" className="gap-1 animate-pulse">
+                  <ArrowUp className="h-3 w-3" />
+                  تصعيد: {getLevelName(itemEscalation.escalation_level)}
+                </Badge>
+              )}
+              {itemEscalation && itemEscalation.status === 'escalated' && (
+                <Badge variant="outline" className="gap-1 border-purple-500 text-purple-500">
+                  <ArrowUp className="h-3 w-3" />
+                  مُصعَّد: {getLevelName(itemEscalation.escalation_level)}
+                </Badge>
+              )}
               {(item as any).is_recurring && (
                 <Badge variant="outline" className="gap-1">
                   <Repeat className="h-3 w-3" />

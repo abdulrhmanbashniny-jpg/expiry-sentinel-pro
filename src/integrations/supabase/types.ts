@@ -2089,6 +2089,53 @@ export type Database = {
           },
         ]
       }
+      knowledge_embeddings: {
+        Row: {
+          chunk_index: number
+          content: string
+          content_hash: string
+          created_at: string
+          embedding: string | null
+          id: string
+          metadata: Json | null
+          source_file: string
+          tenant_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          chunk_index?: number
+          content: string
+          content_hash: string
+          created_at?: string
+          embedding?: string | null
+          id?: string
+          metadata?: Json | null
+          source_file: string
+          tenant_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          chunk_index?: number
+          content?: string
+          content_hash?: string
+          created_at?: string
+          embedding?: string | null
+          id?: string
+          metadata?: Json | null
+          source_file?: string
+          tenant_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "knowledge_embeddings_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       kpi_template_axes: {
         Row: {
           created_at: string
@@ -3706,6 +3753,21 @@ export type Database = {
       is_system_admin: { Args: { _user_id: string }; Returns: boolean }
       is_tenant_admin: { Args: { _tenant_id: string }; Returns: boolean }
       is_user_in_tenant: { Args: { _tenant_id: string }; Returns: boolean }
+      match_knowledge: {
+        Args: {
+          match_count?: number
+          match_threshold?: number
+          p_tenant_id?: string
+          query_embedding: string
+        }
+        Returns: {
+          content: string
+          id: string
+          metadata: Json
+          similarity: number
+          source_file: string
+        }[]
+      }
       resolve_escalation: {
         Args: { p_escalation_id: string; p_notes?: string }
         Returns: boolean

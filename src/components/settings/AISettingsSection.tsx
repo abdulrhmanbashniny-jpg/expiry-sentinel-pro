@@ -9,7 +9,7 @@ import { Separator } from '@/components/ui/separator';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Brain, Shield, TrendingUp, MessageSquare, FileText, Bell, Briefcase, Users, Save, Loader2 } from 'lucide-react';
+import { Brain, Shield, TrendingUp, MessageSquare, FileText, Bell, Briefcase, Users, Save, Loader2, Database, RefreshCw, CheckCircle2 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
 const AGENT_ITEMS = [
@@ -201,11 +201,84 @@ export default function AISettingsSection() {
           <p className="text-xs text-muted-foreground mt-1">يؤثر على أسلوب رسائل التذكير والردود</p>
         </div>
 
+        <Separator />
+
+        {/* Knowledge Base Sync */}
+        <KnowledgeBaseSync />
+
         <Button onClick={handleSaveSettings} disabled={isSaving} className="w-full sm:w-auto">
           {isSaving ? <Loader2 className="ml-2 h-4 w-4 animate-spin" /> : <Save className="ml-2 h-4 w-4" />}
           حفظ الإعدادات
         </Button>
       </CardContent>
     </Card>
+  );
+}
+
+function KnowledgeBaseSync() {
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [lastResult, setLastResult] = useState<any>(null);
+
+  const { data: chunkCount } = useQuery({
+    queryKey: ['knowledge-chunk-count'],
+    queryFn: async () => {
+      const { count } = await supabase
+        .from('knowledge_embeddings')
+        .select('*', { count: 'exact', head: true });
+      return count || 0;
+    },
+  });
+
+  const handleSync = async () => {
+    setIsSyncing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('ingest-knowledge', {
+        body: {},
+      });
+      if (error) throw error;
+      setLastResult(data);
+      toast.success(`تمت مزامنة قاعدة المعرفة: ${data.total_chunks} جزء`);
+    } catch (err: any) {
+      toast.error(err.message || 'فشل في مزامنة قاعدة المعرفة');
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  return (
+    <div>
+      <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
+        <Database className="h-4 w-4" />
+        قاعدة المعرفة (RAG)
+      </h4>
+      <div className="rounded-lg border p-4 space-y-3">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm">مزامنة ملفات السياسات والإجراءات من GitHub</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              {chunkCount ? `${chunkCount} جزء محفوظ حالياً` : 'لم تتم المزامنة بعد'}
+            </p>
+          </div>
+          <Badge variant={chunkCount && chunkCount > 0 ? 'default' : 'secondary'}>
+            {chunkCount && chunkCount > 0 ? 'متصل' : 'غير مزامن'}
+          </Badge>
+        </div>
+
+        {lastResult && (
+          <div className="bg-muted rounded-md p-3 text-xs space-y-1">
+            <div className="flex items-center gap-1 text-green-600">
+              <CheckCircle2 className="h-3 w-3" />
+              <span>جديد: {lastResult.new_chunks} | محدّث: {lastResult.updated_chunks} | أخطاء: {lastResult.errors}</span>
+            </div>
+            <p className="text-muted-foreground">المدة: {lastResult.duration_ms}ms</p>
+          </div>
+        )}
+
+        <Button onClick={handleSync} disabled={isSyncing} variant="outline" className="w-full gap-2">
+          {isSyncing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+          {isSyncing ? 'جارٍ المزامنة...' : 'مزامنة قاعدة المعرفة'}
+        </Button>
+      </div>
+    </div>
   );
 }
