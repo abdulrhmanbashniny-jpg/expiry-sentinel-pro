@@ -119,6 +119,28 @@ serve(async (req) => {
         const activeAgent = detectAgent(message, page_context);
         send('agent', { agent: activeAgent.key, name: activeAgent.name });
 
+        // 4.5 Retrieve relevant knowledge base context (RAG)
+        let knowledgeContext = '';
+        try {
+          // Simple keyword-based retrieval since we use pseudo-embeddings
+          const searchTerms = message.split(/\s+/).filter((w: string) => w.length > 3).slice(0, 5);
+          if (searchTerms.length > 0) {
+            const { data: knowledgeChunks } = await supabase
+              .from('knowledge_embeddings')
+              .select('source_file, content')
+              .or(searchTerms.map((t: string) => `content.ilike.%${t}%`).join(','))
+              .limit(3);
+
+            if (knowledgeChunks && knowledgeChunks.length > 0) {
+              knowledgeContext = '\n## مرجع من قاعدة المعرفة (سياسات الشركة):\n' +
+                knowledgeChunks.map((k: any) => `### 📄 ${k.source_file}\n${k.content.substring(0, 500)}`).join('\n\n');
+              send('thinking', { step: `تم العثور على ${knowledgeChunks.length} مرجع من قاعدة المعرفة` });
+            }
+          }
+        } catch (ragError) {
+          console.error('RAG retrieval error (non-fatal):', ragError);
+        }
+
         // 5. Build system prompt with agent specialization
         const systemPrompt = buildSystemPrompt(
           toolDefs || [],
@@ -126,7 +148,8 @@ serve(async (req) => {
           corrections || [],
           page_context,
           userRole.role,
-          activeAgent
+          activeAgent,
+          knowledgeContext
         );
 
         // 6. Save user message
@@ -393,7 +416,8 @@ function buildSystemPrompt(
   corrections: any[],
   pageContext: string | undefined,
   userRole: string,
-  agent: AgentInfo
+  agent: AgentInfo,
+  knowledgeContext: string = ''
 ): string {
   const agentInstructions: Record<string, string> = {
     auditor: `
@@ -450,6 +474,10 @@ ${tools.map(t => `- **${t.tool_key}** [${t.category}/${t.risk_level}]: ${t.descr
 
   if (pageContext) {
     prompt += `\n## سياق الصفحة الحالية:\nالمستخدم يتصفح: **${pageContext}**\nقدم اقتراحات ذات صلة مباشرة بهذه الصفحة.\n`;
+  }
+
+  if (knowledgeContext) {
+    prompt += `\n${knowledgeContext}\n\n**تعليمات RAG:** عند الإجابة، استشهد بالملف المصدر (مثل: "وفقاً لـ docs/ESCALATION_SYSTEM.md"). هذا يعطي إجابتك مصداقية.\n`;
   }
 
   if (corrections && corrections.length > 0) {
