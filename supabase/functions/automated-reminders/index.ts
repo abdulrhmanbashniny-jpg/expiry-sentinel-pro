@@ -92,17 +92,22 @@ serve(async (req) => {
       .select()
       .single();
 
-    // 1. Get active channel templates
+    // 1. Get active channel templates (filter by template_type = 'reminder')
     const { data: templates } = await supabase
       .from('message_templates')
       .select('*')
       .eq('is_active', true)
-      .in('channel', ['telegram', 'whatsapp']);
+      .eq('template_type', 'reminder')
+      .in('channel', ['telegram', 'whatsapp', 'email', 'all']);
 
     const telegramTemplate = templates?.find(t => t.channel === 'telegram' && t.is_default) || 
-                             templates?.find(t => t.channel === 'telegram');
+                             templates?.find(t => t.channel === 'telegram') ||
+                             templates?.find(t => t.channel === 'all' && t.is_default) ||
+                             templates?.find(t => t.channel === 'all');
     const whatsappTemplate = templates?.find(t => t.channel === 'whatsapp' && t.is_default) || 
-                             templates?.find(t => t.channel === 'whatsapp');
+                             templates?.find(t => t.channel === 'whatsapp') ||
+                             templates?.find(t => t.channel === 'all' && t.is_default) ||
+                             templates?.find(t => t.channel === 'all');
 
     console.log('Templates loaded:', { 
       telegram: telegramTemplate?.name || 'none', 
