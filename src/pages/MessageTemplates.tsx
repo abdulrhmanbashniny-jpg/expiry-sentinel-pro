@@ -16,7 +16,7 @@ import {
   Send, MessageCircle, Eye, Code, CheckCircle2, XCircle,
   Info, Loader2
 } from 'lucide-react';
-import { useMessageTemplates, AVAILABLE_PLACEHOLDERS, REFERENCE_PAYLOAD, applyTemplate, MessageTemplate } from '@/hooks/useMessageTemplates';
+import { useMessageTemplates, AVAILABLE_PLACEHOLDERS, REFERENCE_PAYLOAD, applyTemplate, MessageTemplate, TEMPLATE_TYPE_LABELS, ESCALATION_LEVEL_LABELS, TemplateType } from '@/hooks/useMessageTemplates';
 import { useToast } from '@/hooks/use-toast';
 
 const MessageTemplates: React.FC = () => {
@@ -38,6 +38,8 @@ const MessageTemplates: React.FC = () => {
   // فلترة القوالب حسب القناة
   const filteredTemplates = templates.filter(t => {
     if (activeTab === 'all') return true;
+    if (activeTab === 'reminder') return t.template_type === 'reminder';
+    if (activeTab === 'escalation') return t.template_type === 'escalation';
     return t.channel === activeTab || t.channel === 'all';
   });
 
@@ -45,6 +47,8 @@ const MessageTemplates: React.FC = () => {
     setEditingTemplate({
       name: '',
       channel: 'all',
+      template_type: 'reminder',
+      escalation_level: null,
       template_text: '',
       placeholders: AVAILABLE_PLACEHOLDERS,
       required_fields: ['item_title', 'ref_number', 'expiry_date', 'days_left'],
@@ -106,14 +110,37 @@ const MessageTemplates: React.FC = () => {
     const colors: Record<string, string> = {
       telegram: 'bg-blue-500/10 text-blue-600',
       whatsapp: 'bg-green-500/10 text-green-600',
+      email: 'bg-orange-500/10 text-orange-600',
       all: 'bg-purple-500/10 text-purple-600',
     };
     const labels: Record<string, string> = {
       telegram: 'تيليجرام',
       whatsapp: 'واتساب',
+      email: 'بريد إلكتروني',
       all: 'الكل',
     };
     return <Badge className={colors[channel]}>{labels[channel]}</Badge>;
+  };
+
+  const getTypeBadge = (type: string, level: number | null) => {
+    if (type === 'escalation' && level !== null) {
+      const levelColors: Record<number, string> = {
+        0: 'bg-yellow-500/10 text-yellow-700',
+        1: 'bg-orange-500/10 text-orange-700',
+        2: 'bg-red-500/10 text-red-700',
+        3: 'bg-red-600/10 text-red-800',
+        4: 'bg-red-700/10 text-red-900',
+      };
+      return <Badge className={levelColors[level] || 'bg-red-500/10 text-red-700'}>تصعيد L{level}</Badge>;
+    }
+    const typeColors: Record<string, string> = {
+      reminder: 'bg-green-500/10 text-green-700',
+      escalation: 'bg-red-500/10 text-red-700',
+      invitation: 'bg-blue-500/10 text-blue-700',
+      alert: 'bg-yellow-500/10 text-yellow-700',
+      system: 'bg-gray-500/10 text-gray-700',
+    };
+    return <Badge className={typeColors[type] || ''}>{TEMPLATE_TYPE_LABELS[type as TemplateType] || type}</Badge>;
   };
 
   // معاينة القالب
@@ -127,7 +154,7 @@ const MessageTemplates: React.FC = () => {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">قوالب الرسائل</h1>
-          <p className="text-muted-foreground">إدارة قوالب رسائل التذكير للتيليجرام والواتساب</p>
+          <p className="text-muted-foreground">إدارة قوالب الرسائل للتذكيرات والتصعيدات (تيليجرام، واتساب، بريد إلكتروني)</p>
         </div>
         <div className="flex gap-2">
           <input
@@ -167,8 +194,11 @@ const MessageTemplates: React.FC = () => {
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
           <TabsTrigger value="all">الكل ({templates.length})</TabsTrigger>
+          <TabsTrigger value="reminder">تذكيرات</TabsTrigger>
+          <TabsTrigger value="escalation">تصعيدات</TabsTrigger>
           <TabsTrigger value="telegram">تيليجرام</TabsTrigger>
           <TabsTrigger value="whatsapp">واتساب</TabsTrigger>
+          <TabsTrigger value="email">بريد إلكتروني</TabsTrigger>
         </TabsList>
       </Tabs>
 
@@ -206,7 +236,10 @@ const MessageTemplates: React.FC = () => {
                       <p className="text-sm text-muted-foreground">{template.name_en}</p>
                     )}
                   </div>
-                  {getChannelBadge(template.channel)}
+                  <div className="flex gap-1">
+                    {getChannelBadge(template.channel)}
+                    {getTypeBadge(template.template_type, template.escalation_level)}
+                  </div>
                 </div>
                 {template.description && (
                   <CardDescription>{template.description}</CardDescription>
@@ -310,22 +343,65 @@ const MessageTemplates: React.FC = () => {
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <Label>القناة</Label>
-                  <Select
-                    value={editingTemplate?.channel || 'all'}
-                    onValueChange={(v) => setEditingTemplate(prev => ({ ...prev!, channel: v as any }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">الكل</SelectItem>
-                      <SelectItem value="telegram">تيليجرام</SelectItem>
-                      <SelectItem value="whatsapp">واتساب</SelectItem>
-                    </SelectContent>
-                  </Select>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label>القناة</Label>
+                    <Select
+                      value={editingTemplate?.channel || 'all'}
+                      onValueChange={(v) => setEditingTemplate(prev => ({ ...prev!, channel: v as any }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">الكل</SelectItem>
+                        <SelectItem value="telegram">تيليجرام</SelectItem>
+                        <SelectItem value="whatsapp">واتساب</SelectItem>
+                        <SelectItem value="email">بريد إلكتروني</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>نوع القالب</Label>
+                    <Select
+                      value={editingTemplate?.template_type || 'reminder'}
+                      onValueChange={(v) => setEditingTemplate(prev => ({ 
+                        ...prev!, 
+                        template_type: v as TemplateType,
+                        escalation_level: v === 'escalation' ? (prev?.escalation_level ?? 0) : null 
+                      }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Object.entries(TEMPLATE_TYPE_LABELS).map(([key, label]) => (
+                          <SelectItem key={key} value={key}>{label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
+
+                {editingTemplate?.template_type === 'escalation' && (
+                  <div className="space-y-2">
+                    <Label>مستوى التصعيد</Label>
+                    <Select
+                      value={String(editingTemplate?.escalation_level ?? 0)}
+                      onValueChange={(v) => setEditingTemplate(prev => ({ ...prev!, escalation_level: parseInt(v) }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Object.entries(ESCALATION_LEVEL_LABELS).map(([key, label]) => (
+                          <SelectItem key={key} value={key}>{label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
 
                 <div className="space-y-2">
                   <Label>نص القالب *</Label>

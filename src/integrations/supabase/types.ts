@@ -2308,6 +2308,7 @@ export type Database = {
           created_by: string | null
           description: string | null
           dynamic_field_keys: string[] | null
+          escalation_level: number | null
           id: string
           is_active: boolean
           is_default: boolean
@@ -2317,6 +2318,7 @@ export type Database = {
           placeholders: Json | null
           required_fields: string[] | null
           template_text: string
+          template_type: string
           tenant_id: string | null
           updated_at: string
           version: number
@@ -2327,6 +2329,7 @@ export type Database = {
           created_by?: string | null
           description?: string | null
           dynamic_field_keys?: string[] | null
+          escalation_level?: number | null
           id?: string
           is_active?: boolean
           is_default?: boolean
@@ -2336,6 +2339,7 @@ export type Database = {
           placeholders?: Json | null
           required_fields?: string[] | null
           template_text: string
+          template_type?: string
           tenant_id?: string | null
           updated_at?: string
           version?: number
@@ -2346,6 +2350,7 @@ export type Database = {
           created_by?: string | null
           description?: string | null
           dynamic_field_keys?: string[] | null
+          escalation_level?: number | null
           id?: string
           is_active?: boolean
           is_default?: boolean
@@ -2355,6 +2360,7 @@ export type Database = {
           placeholders?: Json | null
           required_fields?: string[] | null
           template_text?: string
+          template_type?: string
           tenant_id?: string | null
           updated_at?: string
           version?: number

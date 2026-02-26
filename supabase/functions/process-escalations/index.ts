@@ -212,17 +212,22 @@ Deno.serve(async (req) => {
           continue;
         }
 
-        // 8. بناء رسالة التصعيد الاحترافية
-        const messageTitle = `🚨 تصعيد (${LEVEL_NAMES[nextLevel]}) - المستوى ${nextLevel}`;
-        
-        // استبدال المتغيرات في قالب الرسالة
-        let ruleMessage = (rule.message_template || 'معاملة تحتاج متابعتك')
-          .replace('{employee_name}', employeeData?.full_name || 'موظف')
-          .replace('{supervisor_name}', previousRecipientData?.full_name || 'المسؤول السابق')
-          .replace('{item_title}', itemData?.title || 'معاملة')
-          .replace('{item_ref}', itemData?.ref_number || '');
+        // 8. بناء رسالة التصعيد من القوالب الديناميكية
+        // جلب القالب المناسب للمستوى والقناة
+        const fetchTemplate = async (channel: string) => {
+          const { data: tmpl } = await supabase
+            .from('message_templates')
+            .select('template_text')
+            .eq('template_type', 'escalation')
+            .eq('escalation_level', nextLevel)
+            .eq('is_active', true)
+            .or(`channel.eq.${channel},channel.eq.all`)
+            .order('channel', { ascending: true }) // prefer specific channel over 'all'
+            .limit(1);
+          return tmpl?.[0]?.template_text || null;
+        };
 
-        // بناء الرسالة الكاملة مع التفاصيل
+        // بيانات المتغيرات لاستبدالها في القالب
         const itemDept = (itemData?.department as any)?.name || '-';
         const itemCat = (itemData?.category as any)?.name || '-';
         const itemRef = itemData?.ref_number || '-';
@@ -233,22 +238,58 @@ Deno.serve(async (req) => {
           ? `❌ لم يستجب: ${unacknowledgedLevels.join(' ← ')}`
           : '';
 
-        const messageBody = `${ruleMessage}
+        const templateData: Record<string, any> = {
+          employee_name: employeeData?.full_name || 'موظف',
+          supervisor_name: previousRecipientData?.full_name || 'المسؤول السابق',
+          item_title: itemData?.title || 'معاملة',
+          title: itemData?.title || 'معاملة',
+          item_code: itemRef,
+          ref_number: itemRef,
+          department_name: itemDept,
+          category_name: itemCat,
+          category: itemCat,
+          due_date: itemExpiry,
+          expiry_date: itemExpiry,
+          escalation_level: String(nextLevel),
+          chain_summary: chainSummary,
+          item_url: `${PUBLISHED_APP_URL}/items/${escalation.item_id}`,
+          remaining_text: '-',
+        };
 
-📋 تفاصيل المعاملة:
-📁 العنوان: ${itemData?.title || '-'}
-🔢 المرجع: ${itemRef}
-🏢 القسم: ${itemDept}
-📂 الفئة: ${itemCat}
-📅 تاريخ الاستحقاق: ${itemExpiry}
-👤 الموظف الأصلي: ${employeeData?.full_name || '-'}
+        // Fallback message if no template found
+        const buildFallbackMessage = () => {
+          const messageTitle = `🚨 تصعيد (${LEVEL_NAMES[nextLevel]}) - المستوى ${nextLevel}`;
+          let ruleMessage = (rule.message_template || 'معاملة تحتاج متابعتك')
+            .replace('{employee_name}', templateData.employee_name)
+            .replace('{supervisor_name}', templateData.supervisor_name)
+            .replace('{item_title}', templateData.item_title)
+            .replace('{item_ref}', itemRef);
 
-${chainSummary}
+          return `${messageTitle}\n\n${ruleMessage}\n\n📋 تفاصيل المعاملة:\n📁 العنوان: ${templateData.title}\n🔢 المرجع: ${itemRef}\n🏢 القسم: ${itemDept}\n📂 الفئة: ${itemCat}\n📅 تاريخ الاستحقاق: ${itemExpiry}\n👤 الموظف الأصلي: ${templateData.employee_name}\n\n${chainSummary}\n\n🔗 رابط المعاملة:\n${templateData.item_url}`;
+        };
 
-🔗 رابط المعاملة:
-${PUBLISHED_APP_URL}/items/${escalation.item_id}`;
+        // Apply template function
+        const applyTemplateVars = (text: string, data: Record<string, any>): string => {
+          let result = text;
+          for (const [key, value] of Object.entries(data)) {
+            result = result.replace(new RegExp(`{{${key}}}`, 'g'), String(value || ''));
+          }
+          result = result.replace(/{{#if\s+(\w+)}}([\s\S]*?){{\/if}}/g, (match, field, content) => {
+            return data[field] ? content : '';
+          });
+          result = result.replace(/{{[\w.]+}}/g, '');
+          return result.trim();
+        };
 
-        // إنشاء إشعار in_app
+        const messageTitle = `🚨 تصعيد (${LEVEL_NAMES[nextLevel]}) - المستوى ${nextLevel}`;
+        const fallbackMessage = buildFallbackMessage();
+
+        // إنشاء إشعار in_app (use template if available)
+        const inAppTemplate = await fetchTemplate('email'); // in_app uses same format
+        const inAppMessage = inAppTemplate 
+          ? applyTemplateVars(inAppTemplate, templateData) 
+          : fallbackMessage;
+
         await supabase.from('in_app_notifications').insert({
           tenant_id: escalation.tenant_id,
           user_id: nextRecipient,
@@ -256,13 +297,12 @@ ${PUBLISHED_APP_URL}/items/${escalation.item_id}`;
           entity_type: 'item',
           notification_type: 'escalation',
           title: messageTitle,
-          message: messageBody,
+          message: inAppMessage,
           priority: nextLevel >= 3 ? 'critical' : 'high',
           action_url: `/items/${escalation.item_id}`,
         });
 
-        // 9. إرسال إشعارات عبر القنوات المحددة
-        const fullMessage = `${messageTitle}\n\n${messageBody}`;
+        // 9. إرسال إشعارات عبر القنوات المحددة باستخدام القوالب الديناميكية
 
         if (rule.notification_channels.includes('whatsapp') || rule.notification_channels.includes('telegram')) {
           // جلب بيانات المستقبل
@@ -273,13 +313,17 @@ ${PUBLISHED_APP_URL}/items/${escalation.item_id}`;
             .single();
 
           if (recipientProfile) {
-            // إرسال WhatsApp
+            // إرسال WhatsApp مع قالب ديناميكي
             if (rule.notification_channels.includes('whatsapp') && recipientProfile.allow_whatsapp && recipientProfile.phone) {
               try {
+                const waTemplate = await fetchTemplate('whatsapp');
+                const waMessage = waTemplate 
+                  ? applyTemplateVars(waTemplate, templateData) 
+                  : fallbackMessage;
                 await supabase.functions.invoke('send-whatsapp', {
                   body: {
                     phone: recipientProfile.phone,
-                    message: fullMessage,
+                    message: waMessage,
                     tenantId: escalation.tenant_id,
                   },
                 });
@@ -289,13 +333,17 @@ ${PUBLISHED_APP_URL}/items/${escalation.item_id}`;
               }
             }
 
-            // إرسال Telegram
+            // إرسال Telegram مع قالب ديناميكي
             if (rule.notification_channels.includes('telegram') && recipientProfile.allow_telegram && recipientProfile.telegram_user_id) {
               try {
+                const tgTemplate = await fetchTemplate('telegram');
+                const tgMessage = tgTemplate 
+                  ? applyTemplateVars(tgTemplate, templateData) 
+                  : fallbackMessage;
                 await supabase.functions.invoke('send-telegram', {
                   body: {
                     chat_id: recipientProfile.telegram_user_id,
-                    message: fullMessage,
+                    message: tgMessage,
                     tenantId: escalation.tenant_id,
                   },
                 });

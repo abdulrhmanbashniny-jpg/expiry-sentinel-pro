@@ -2,12 +2,17 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
+export type TemplateType = 'reminder' | 'escalation' | 'invitation' | 'alert' | 'system';
+export type TemplateChannel = 'telegram' | 'whatsapp' | 'email' | 'all';
+
 export interface MessageTemplate {
   id: string;
   name: string;
   name_en: string | null;
   description: string | null;
-  channel: 'telegram' | 'whatsapp' | 'all';
+  channel: TemplateChannel;
+  template_type: TemplateType;
+  escalation_level: number | null;
   template_text: string;
   placeholders: Array<{
     key: string;
@@ -25,6 +30,22 @@ export interface MessageTemplate {
   updated_at: string;
 }
 
+export const TEMPLATE_TYPE_LABELS: Record<TemplateType, string> = {
+  reminder: 'تذكير عادي',
+  escalation: 'تصعيد',
+  invitation: 'دعوة',
+  alert: 'تنبيه',
+  system: 'نظام',
+};
+
+export const ESCALATION_LEVEL_LABELS: Record<number, string> = {
+  0: 'المستوى 0 - الموظف',
+  1: 'المستوى 1 - المشرف',
+  2: 'المستوى 2 - المدير',
+  3: 'المستوى 3 - المدير العام',
+  4: 'المستوى 4 - الموارد البشرية',
+};
+
 // المتغيرات المتاحة للقوالب - محدثة حسب المتطلبات
 export const AVAILABLE_PLACEHOLDERS = [
   { key: 'item_code', label: 'كود العنصر (ref_number)', required: true },
@@ -37,7 +58,12 @@ export const AVAILABLE_PLACEHOLDERS = [
   { key: 'validity_status', label: 'حالة الصلاحية', required: false },
   { key: 'remaining_text', label: 'النص المتبقي (أيام)', required: true },
   { key: 'item_url', label: 'رابط المعاملة (قابل للنقر)', required: true },
-  // Backward compatibility
+  // Escalation-specific
+  { key: 'employee_name', label: 'اسم الموظف', required: false },
+  { key: 'supervisor_name', label: 'اسم المشرف', required: false },
+  { key: 'escalation_level', label: 'مستوى التصعيد', required: false },
+  { key: 'chain_summary', label: 'ملخص سلسلة التصعيد', required: false },
+  // General
   { key: 'item_title', label: 'عنوان المعاملة (قديم)', required: false },
   { key: 'ref_number', label: 'الرقم المرجعي (قديم)', required: false },
   { key: 'department_name', label: 'اسم القسم', required: false },
@@ -111,6 +137,8 @@ export function useMessageTemplates() {
           name: template.name!,
           channel: template.channel || 'all',
           template_text: template.template_text!,
+          template_type: template.template_type || 'reminder',
+          escalation_level: template.escalation_level ?? null,
           name_en: template.name_en,
           description: template.description,
           placeholders: template.placeholders || [],
